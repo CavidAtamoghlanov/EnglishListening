@@ -142,6 +142,7 @@ Recommended: add seeds under `scripts/wordBank/seeds/` and run `npx tsx scripts/
 
 Each item must match:
 
+
 ```ts
 type WordItem = {
   id: string;
