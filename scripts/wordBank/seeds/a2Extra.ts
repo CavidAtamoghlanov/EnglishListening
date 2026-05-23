@@ -1,0 +1,48 @@
+import type { WordSeed } from "../types";
+
+function w(english: string, azeri: string, category: string, icon: string): WordSeed {
+  return { english, azeri, category, icon, synonyms: [] };
+}
+
+export const A2_EXTRA_SEEDS: WordSeed[] = [
+  w("wake up", "oyanmaq", "daily routine", "⏰"),
+  w("get dressed", "geyinmək", "daily routine", "👔"),
+  w("brush teeth", "diş fırçalamaq", "daily routine", "🪥"),
+  w("take a shower", "duş qəbul etmək", "daily routine", "🚿"),
+  w("commute", "işə gedib-gəlmək", "daily routine", "🚇"),
+  w("grocery", "ərzaq", "shopping", "🛒"),
+  w("receipt", "qəbz", "shopping", "🧾"),
+  w("discount", "endirim", "shopping", "🏷️"),
+  w("cashier", "kassir", "shopping", "💳"),
+  w("turn left", "sola dön", "directions", "⬅️"),
+  w("turn right", "sağa dön", "directions", "➡️"),
+  w("straight ahead", "düz get", "directions", "⬆️"),
+  w("intersection", "çarpazlıq", "directions", "🚦"),
+  w("platform", "platforma", "transport", "🚉"),
+  w("fare", "gediş haqqı", "transport", "🎫"),
+  w("traffic jam", "tıxac", "transport", "🚗"),
+  w("reception", "resepsiya", "hotel", "🛎️"),
+  w("single room", "tək otaq", "hotel", "🛏️"),
+  w("double room", "iki nəfərlik otaq", "hotel", "🛏️"),
+  w("room service", "otaq xidməti", "hotel", "🍽️"),
+  w("menu", "menyu", "restaurant", "📋"),
+  w("bill please", "hesab, zəhmət olmasa", "restaurant", "🧾"),
+  w("tip", "çay pulu", "restaurant", "💵"),
+  w("allergy", "allergiya", "restaurant", "⚠️"),
+  w("forecast", "proqnoz", "weather", "🌤️"),
+  w("umbrella", "çətir", "weather", "☂️"),
+  w("fever", "hərarət", "health", "🤒"),
+  w("pharmacy", "aptek", "health", "💊"),
+  w("appointment", "görüş", "health", "📅"),
+  w("deadline", "son tarix", "work basics", "📅"),
+  w("colleague", "həmkar", "work basics", "👔"),
+  w("meeting room", "görüş otağı", "work basics", "🏢"),
+  w("laptop", "noutbuk", "simple technology", "💻"),
+  w("update software", "proqramı yeniləmək", "simple technology", "🔄"),
+  w("backup", "ehtiyat nüsxə", "simple technology", "💾"),
+  w("voicemail", "səsli poçt", "simple communication", "📞"),
+  w("reply", "cavab vermək", "simple communication", "↩️"),
+  w("polite", "nəzakətli", "simple communication", "🙂"),
+  w("interrupt", "sözünü kəsmək", "simple communication", "✋"),
+  w("explain", "izah etmək", "simple communication", "💬"),
+];

@@ -1,0 +1,1 @@
+export const CORRECT_ANSWER_DELAY_MS = 2000;

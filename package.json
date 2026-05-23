@@ -1,22 +1,48 @@
 {
-  "name": "englishlistening",
+  "name": "english-voice-practice",
   "version": "1.0.0",
-  "main": "index.ts",
+  "main": "expo-router/entry",
   "dependencies": {
+    "@react-native-async-storage/async-storage": "2.2.0",
     "expo": "~56.0.3",
+    "expo-constants": "~56.0.14",
+    "expo-linear-gradient": "~56.0.4",
+    "expo-linking": "~56.0.11",
+    "expo-router": "~56.2.5",
+    "expo-speech": "~56.0.3",
+    "expo-speech-recognition": "^56.0.0",
     "expo-status-bar": "~56.0.4",
+    "lucide-react-native": "^1.16.0",
     "react": "19.2.3",
-    "react-native": "0.85.3"
+    "react-dom": "19.2.3",
+    "react-native": "0.85.3",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "4.25.1",
+    "react-native-svg": "15.15.4",
+    "react-native-web": "^0.21.2"
   },
   "devDependencies": {
+    "@types/node": "^25.9.1",
     "@types/react": "~19.2.2",
+    "eslint": "^9.39.4",
+    "eslint-config-expo": "^56.0.4",
+    "tsx": "^4.22.3",
     "typescript": "~6.0.3"
   },
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "lint": "expo lint",
+    "typecheck": "tsc --noEmit",
+    "validate:words": "tsx scripts/validateWords.ts",
+    "validate:words:strict": "tsx scripts/validateWords.ts --strict",
+    "stats:words": "tsx scripts/wordStats.ts",
+    "build:words": "tsx scripts/buildWordBank.ts",
+    "generate:sentences": "tsx scripts/generateSentences.ts",
+    "validate:sentences": "tsx scripts/validateSentences.ts",
+    "export:web": "expo export --platform web"
   },
   "private": true
 }

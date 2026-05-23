@@ -1,0 +1,226 @@
+[
+  {
+    "id": "translate_b1_0001",
+    "level": "B1",
+    "mode": "translate",
+    "english": "I found the problem.",
+    "azeri": "Problemi tapdım.",
+    "acceptedAnswers": [
+      "I found the problem."
+    ],
+    "category": "software",
+    "icon": "🔍",
+    "words": [
+      {
+        "text": "Problemi",
+        "translation": "the problem"
+      },
+      {
+        "text": "tapdım",
+        "translation": "found"
+      }
+    ]
+  },
+  {
+    "id": "translate_b1_0002",
+    "level": "B1",
+    "mode": "translate",
+    "english": "We should check the logs.",
+    "azeri": "Logları yoxlamalıyıq.",
+    "acceptedAnswers": [
+      "We should check the logs."
+    ],
+    "category": "software",
+    "icon": "📋",
+    "words": [
+      {
+        "text": "Logları",
+        "translation": "logs"
+      },
+      {
+        "text": "yoxlamalıyıq",
+        "translation": "should check"
+      }
+    ]
+  },
+  {
+    "id": "translate_b1_0003",
+    "level": "B1",
+    "mode": "translate",
+    "english": "The API returns an error.",
+    "azeri": "API xəta qaytarır.",
+    "acceptedAnswers": [
+      "The API returns an error."
+    ],
+    "category": "software",
+    "icon": "🌐",
+    "words": [
+      {
+        "text": "API",
+        "translation": "API"
+      },
+      {
+        "text": "xəta",
+        "translation": "error"
+      },
+      {
+        "text": "qaytarır",
+        "translation": "returns"
+      }
+    ]
+  },
+  {
+    "id": "translate_b1_0004",
+    "level": "B1",
+    "mode": "translate",
+    "english": "I need more time.",
+    "azeri": "Mənə daha çox vaxt lazımdır.",
+    "acceptedAnswers": [
+      "I need more time."
+    ],
+    "category": "work",
+    "icon": "⏰",
+    "words": [
+      {
+        "text": "vaxt",
+        "translation": "time"
+      },
+      {
+        "text": "lazımdır",
+        "translation": "need"
+      }
+    ]
+  },
+  {
+    "id": "translate_b1_0005",
+    "level": "B1",
+    "mode": "translate",
+    "english": "Can we discuss this later?",
+    "azeri": "Bunu sonra müzakirə edə bilərik?",
+    "acceptedAnswers": [
+      "Can we discuss this later?"
+    ],
+    "category": "meetings",
+    "icon": "💬",
+    "words": [
+      {
+        "text": "müzakirə",
+        "translation": "discuss"
+      },
+      {
+        "text": "sonra",
+        "translation": "later"
+      }
+    ]
+  },
+  {
+    "id": "translate_b1_0006",
+    "level": "B1",
+    "mode": "translate",
+    "english": "The flight was delayed.",
+    "azeri": "Uçuş gecikdi.",
+    "acceptedAnswers": [
+      "The flight was delayed."
+    ],
+    "category": "travel",
+    "icon": "✈️",
+    "words": [
+      {
+        "text": "Uçuş",
+        "translation": "flight"
+      },
+      {
+        "text": "gecikdi",
+        "translation": "was delayed"
+      }
+    ]
+  },
+  {
+    "id": "translate_b1_0007",
+    "level": "B1",
+    "mode": "translate",
+    "english": "I agree with you.",
+    "azeri": "Sizinlə razıyam.",
+    "acceptedAnswers": [
+      "I agree with you."
+    ],
+    "category": "opinions",
+    "icon": "✅",
+    "words": [
+      {
+        "text": "razıyam",
+        "translation": "agree"
+      },
+      {
+        "text": "Sizinlə",
+        "translation": "with you"
+      }
+    ]
+  },
+  {
+    "id": "translate_b1_0008",
+    "level": "B1",
+    "mode": "translate",
+    "english": "Please update the ticket.",
+    "azeri": "Zəhmət olmasa tiketi yeniləyin.",
+    "acceptedAnswers": [
+      "Please update the ticket."
+    ],
+    "category": "work",
+    "icon": "🎫",
+    "words": [
+      {
+        "text": "tiketi",
+        "translation": "ticket"
+      },
+      {
+        "text": "yeniləyin",
+        "translation": "update"
+      }
+    ]
+  },
+  {
+    "id": "translate_b1_0009",
+    "level": "B1",
+    "mode": "translate",
+    "english": "The database is down.",
+    "azeri": "Verilənlər bazası işləmir.",
+    "acceptedAnswers": [
+      "The database is down."
+    ],
+    "category": "software",
+    "icon": "🗄️",
+    "words": [
+      {
+        "text": "Verilənlər bazası",
+        "translation": "database"
+      },
+      {
+        "text": "işləmir",
+        "translation": "is down"
+      }
+    ]
+  },
+  {
+    "id": "translate_b1_0010",
+    "level": "B1",
+    "mode": "translate",
+    "english": "I will call you back.",
+    "azeri": "Sizə geri zəng edəcəyəm.",
+    "acceptedAnswers": [
+      "I will call you back."
+    ],
+    "category": "communication",
+    "icon": "📞",
+    "words": [
+      {
+        "text": "zəng",
+        "translation": "call"
+      },
+      {
+        "text": "geri",
+        "translation": "back"
+      }
+    ]
+  }
+]

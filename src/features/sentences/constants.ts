@@ -1,0 +1,3 @@
+export const CORRECT_SENTENCE_DELAY_MS = 2000;
+
+export const SENTENCES_PER_LEVEL = 10;
