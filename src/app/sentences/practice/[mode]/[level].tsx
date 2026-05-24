@@ -1,28 +1,28 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Animated, Platform, StyleSheet, useWindowDimensions, View } from "react-native";
+import { Animated, Platform } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { RotateCcw, Send } from "lucide-react-native";
+import { Languages, SkipForward, Volume2 } from "lucide-react-native";
 import { AppButton } from "../../../../components/common/AppButton";
-import { AppCard } from "../../../../components/common/AppCard";
-import { AppText } from "../../../../components/common/AppText";
 import { useConfirmDialog } from "../../../../components/common/ConfirmDialog";
 import { EmptyState } from "../../../../components/common/EmptyState";
 import { PageHeader } from "../../../../components/common/PageHeader";
-import { TextInputField } from "../../../../components/common/TextInputField";
 import { Screen } from "../../../../components/layout/Screen";
-import { ProgressHeaderCard } from "../../../../components/common/ProgressHeaderCard";
-import { PracticeStatsRow } from "../../../../components/common/PracticeStatsRow";
+import { LessonActionDock } from "../../../../components/lesson/LessonActionDock";
+import { LessonCard, type LessonCardTone } from "../../../../components/lesson/LessonCard";
+import { LessonFeedbackOverlay } from "../../../../components/lesson/LessonFeedbackOverlay";
+import { LessonManualAnswerSheet } from "../../../../components/lesson/LessonManualAnswerSheet";
+import { LessonPreviousPanel } from "../../../../components/lesson/LessonPreviousPanel";
+import { LessonShell } from "../../../../components/lesson/LessonShell";
+import { LessonStatsPanel } from "../../../../components/lesson/LessonStatsPanel";
+import { LessonTopBar } from "../../../../components/lesson/LessonTopBar";
 import { getSentenceModeConfig, parseSentenceModeParam } from "../../../../features/sentences/config/modes";
 import { isSentenceLevel } from "../../../../features/sentences/config/levels";
-import { PreviousSentenceCard } from "../../../../features/sentences/components/PreviousSentenceCard";
-import { SentenceFeedback } from "../../../../features/sentences/components/SentenceFeedback";
-import { SentencePracticeCard } from "../../../../features/sentences/components/SentencePracticeCard";
+import { SentenceWordChips } from "../../../../features/sentences/components/SentenceWordChips";
 import { useActiveProfile } from "../../../../features/profile/hooks/useActiveProfile";
 import { useSpeechRecognition } from "../../../../features/speech/hooks/useSpeechRecognition";
 import { useTextToSpeech } from "../../../../features/speech/hooks/useTextToSpeech";
 import { useSentencePractice } from "../../../../features/sentences/hooks/useSentencePractice";
-import { colors } from "../../../../theme/colors";
-import { spacing } from "../../../../theme/spacing";
+import { getMatchedWordIndices } from "../../../../features/sentences/utils/sentenceAnswer";
 
 export default function SentencePracticeScreen() {
   const router = useRouter();
@@ -34,11 +34,9 @@ export default function SentencePracticeScreen() {
   const practice = useSentencePractice(activeProfile?.id, mode ?? "repeat", level ?? "A1");
   const { speak } = useTextToSpeech(activeProfile?.id);
   const { confirm, dialog } = useConfirmDialog();
-  const { width: windowWidth } = useWindowDimensions();
-  const isWideLayout = windowWidth >= 900;
-
   const [manualAnswer, setManualAnswer] = useState("");
   const [recognizedText, setRecognizedText] = useState("");
+  const [showFullTranslation, setShowFullTranslation] = useState(false);
   const feedbackScale = useMemo(() => new Animated.Value(1), []);
   const inputsDisabled = practice.isAnswerLocked;
 
@@ -55,6 +53,7 @@ export default function SentencePracticeScreen() {
   useEffect(() => {
     setManualAnswer("");
     setRecognizedText("");
+    setShowFullTranslation(false);
   }, [practice.currentSentence?.id, practice.currentIndex]);
 
   const contextualStrings = useMemo(
@@ -96,6 +95,17 @@ export default function SentencePracticeScreen() {
     }).start();
   }, [feedbackScale, practice.feedback.message]);
 
+  const handleSkip = useCallback(() => {
+    if (inputsDisabled) {
+      return;
+    }
+
+    setManualAnswer("");
+    setRecognizedText("");
+    setShowFullTranslation(false);
+    void practice.skipCurrentSentence();
+  }, [inputsDisabled, practice]);
+
   if (!activeProfile || !mode || !level || !modeConfig || practice.isLoading) {
     return null;
   }
@@ -105,6 +115,7 @@ export default function SentencePracticeScreen() {
   const completed = total > 0 && practice.currentIndex >= total;
   const currentNumber = completed ? total : Math.min(practice.currentIndex + 1, total);
   const percent = total > 0 ? (practice.currentIndex / total) * 100 : 0;
+  const remainingSentences = Math.max(total - currentNumber, 0);
 
   const displayedAnswer =
     practice.submittedAnswer ??
@@ -139,7 +150,7 @@ export default function SentencePracticeScreen() {
     return (
       <Screen maxWidth={760}>
         <PageHeader title={modeConfig.title} icon={modeConfig.icon} onBack={() => router.back()} />
-        <EmptyState icon="—" title="No sentences" message="No sentences are available for this level yet." />
+        <EmptyState icon="-" title="No sentences" message="No sentences are available for this level yet." />
       </Screen>
     );
   }
@@ -158,117 +169,144 @@ export default function SentencePracticeScreen() {
     );
   }
 
-  const manualPlaceholder =
-    mode === "repeat" ? "Type the English sentence" : "Type the English translation";
-
-  const practiceBody = (
-    <>
-      <ProgressHeaderCard percent={percent} />
-
-      <SentencePracticeCard
-        mode={mode}
-        sentence={currentSentence}
-        recognizedOrSubmittedAnswer={displayedAnswer ?? recognizedText}
-        onReplay={() => void speak(currentSentence.english)}
-        onMicPress={() => void speech.start()}
-        isListening={speech.isListening}
-        inputsDisabled={inputsDisabled}
-      />
-
-      <SentenceFeedback
-        displayedAnswer={displayedAnswer}
-        answerLabel={answerLabel}
-        feedback={practice.feedback}
-        listeningHint={
-          speech.isListening
-            ? "Listening…"
-            : "Use the microphone in the card or type your answer below."
-        }
-        speechError={
-          speech.manualFallbackRecommended
-            ? speech.error ?? "Speech recognition is unavailable. Type the answer instead."
-            : null
-        }
-        scale={feedbackScale}
-      />
-
-      <AppCard padding="md" style={styles.manualCard}>
-        <TextInputField
-          label="Manual answer"
-          value={manualAnswer}
-          onChangeText={setManualAnswer}
-          placeholder={manualPlaceholder}
-          autoCapitalize="none"
-          editable={!inputsDisabled}
-          returnKeyType="done"
-          onSubmitEditing={() => void submitManualAnswer()}
-        />
-        <AppButton icon={Send} disabled={inputsDisabled} onPress={() => void submitManualAnswer()}>
-          Check
-        </AppButton>
-      </AppCard>
-
-      <PracticeStatsRow
-        attempts={practice.stats?.totalAttempts ?? 0}
-        correct={practice.stats?.correctCount ?? 0}
-        wrong={practice.stats?.wrongCount ?? 0}
-        streak={practice.stats?.currentStreak ?? 0}
-        best={practice.stats?.bestStreak ?? 0}
-      />
-    </>
-  );
+  const isRepeat = mode === "repeat";
+  const displayText = isRepeat ? currentSentence.english : currentSentence.azeri;
+  const fullHelpText = showFullTranslation
+    ? isRepeat
+      ? `Translation: ${currentSentence.azeri}`
+      : `English: ${currentSentence.english}`
+    : null;
+  const matchedIndices = isRepeat
+    ? getMatchedWordIndices(currentSentence.english, displayedAnswer ?? recognizedText)
+    : new Set<number>();
+  const feedbackTone =
+    practice.feedback.type === "correct"
+      ? "correct"
+      : practice.feedback.type === "wrong"
+        ? "wrong"
+        : "neutral";
+  const cardTone: LessonCardTone = feedbackTone;
+  const cardFeedbackMessage =
+    feedbackTone === "correct"
+      ? "Düzdür!"
+      : feedbackTone === "wrong"
+        ? "Yanlışdır - yenidən cəhd et"
+        : null;
+  const previousSentence = practice.previousSentence;
+  const manualPlaceholder = isRepeat ? "Type the English sentence" : "Type the English translation";
 
   return (
-    <Screen maxWidth={isWideLayout ? 1100 : 720}>
+    <LessonShell
+      sectionTitle="Növbəti cümlə"
+      primaryNavLabel="Cümlə"
+      topBar={
+        <LessonTopBar
+          progressPercent={percent}
+          onClose={() => router.back()}
+          onRestart={restartPractice}
+          scoreLabel={`🔥 ${practice.stats?.currentStreak ?? 0}`}
+        />
+      }
+      previousPanel={
+        <LessonPreviousPanel
+          title="Əvvəlki cümlə"
+          emptyText="Hələ əvvəlki cümlə yoxdur"
+          icon={previousSentence?.icon}
+          primary={previousSentence?.english}
+          secondary={previousSentence?.azeri}
+          onReplay={previousSentence ? () => void speak(previousSentence.english) : undefined}
+        />
+      }
+      statsPanel={
+        <LessonStatsPanel
+          attempts={practice.stats?.totalAttempts ?? 0}
+          correct={practice.stats?.correctCount ?? 0}
+          wrong={practice.stats?.wrongCount ?? 0}
+          streak={practice.stats?.currentStreak ?? 0}
+          best={practice.stats?.bestStreak ?? 0}
+          remaining={remainingSentences}
+        />
+      }
+    >
       {dialog}
-      <PageHeader
-        title={modeConfig.title}
-        subtitle={`${activeProfile.name} · ${level} · Sentence ${currentNumber} / ${total}`}
-        onBack={() => router.back()}
-        actions={
-          <AppButton variant="secondary" size="sm" icon={RotateCcw} onPress={restartPractice}>
-            Restart
-          </AppButton>
-        }
+      <LessonCard
+        itemKey={currentSentence.id}
+        icon={currentSentence.icon}
+        prompt={displayText}
+        eyebrow={`${activeProfile.name} - ${level} - ${currentNumber}/${total}`}
+        tone={cardTone}
+        hintText={fullHelpText}
+        onSkip={handleSkip}
+        skipTitle="Yuxarı sürüşdür"
+        skipSubtitle="Sona at"
+        feedbackMessage={cardFeedbackMessage}
+        displayedAnswer={displayedAnswer}
+        answerLabel={answerLabel}
+      >
+        <SentenceWordChips
+          displayText={displayText}
+          hints={currentSentence.words}
+          matchedIndices={matchedIndices}
+        />
+      </LessonCard>
+
+      <LessonActionDock
+        actions={[
+          {
+            label: isRepeat
+              ? showFullTranslation
+                ? "Hide"
+                : "Translate"
+              : showFullTranslation
+                ? "Hide"
+                : "English",
+            icon: Languages,
+            onPress: () => setShowFullTranslation((value) => !value),
+            active: showFullTranslation,
+          },
+          {
+            label: "Replay",
+            icon: Volume2,
+            onPress: () => void speak(currentSentence.english),
+          },
+          {
+            label: "Skip",
+            icon: SkipForward,
+            onPress: handleSkip,
+          },
+        ]}
+        onMicPress={() => void speech.start()}
+        isListening={speech.isListening}
+        disabled={inputsDisabled}
       />
 
-      <View style={[styles.layout, isWideLayout && styles.layoutWide]}>
-        <View style={styles.main}>{practiceBody}</View>
-        <View style={[styles.side, isWideLayout && styles.sideWide]}>
-          <PreviousSentenceCard
-            sentence={practice.previousSentence}
-            onReplay={(english) => void speak(english)}
-          />
-        </View>
-      </View>
-    </Screen>
+      {feedbackTone === "neutral" || speech.manualFallbackRecommended ? (
+        <LessonFeedbackOverlay
+          displayedAnswer={displayedAnswer}
+          answerLabel={answerLabel}
+          message={practice.feedback.message}
+          tone={feedbackTone}
+          hint={
+            speech.isListening
+              ? "Listening..."
+              : "Mic işlət, kömək aç, ya da yazaraq cavabla."
+          }
+          error={
+            speech.manualFallbackRecommended
+              ? speech.error ?? "Speech recognition is unavailable. Type the answer instead."
+              : null
+          }
+          scale={feedbackScale}
+        />
+      ) : null}
+
+      <LessonManualAnswerSheet
+        value={manualAnswer}
+        onChangeText={setManualAnswer}
+        placeholder={manualPlaceholder}
+        disabled={inputsDisabled}
+        onSubmit={() => void submitManualAnswer()}
+      />
+    </LessonShell>
   );
 }
-
-const styles = StyleSheet.create({
-  layout: {
-    width: "100%",
-    gap: spacing.lg,
-  },
-  layoutWide: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-  },
-  main: {
-    flex: 1,
-    minWidth: 0,
-    gap: spacing.lg,
-  },
-  side: {
-    width: "100%",
-    minWidth: 0,
-  },
-  sideWide: {
-    width: 300,
-    flexShrink: 0,
-  },
-  manualCard: {
-    width: "100%",
-    gap: spacing.sm,
-  },
-});

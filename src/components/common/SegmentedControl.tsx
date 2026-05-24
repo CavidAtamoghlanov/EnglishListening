@@ -33,7 +33,7 @@ export function SegmentedControl<T extends string>({
           >
             <AppText
               variant="small"
-              color={selected ? colors.white : colors.text}
+              color={selected ? colors.background : colors.text}
               style={styles.optionText}
             >
               {option.label}

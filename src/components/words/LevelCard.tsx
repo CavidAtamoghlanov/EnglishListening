@@ -36,7 +36,7 @@ export function LevelCard({
     <AppCard style={styles.card} padding="lg">
       <View style={styles.header}>
         <View style={styles.badge}>
-          <AppText variant="h2" color={colors.white}>
+          <AppText variant="h2" color={colors.background}>
             {level}
           </AppText>
         </View>

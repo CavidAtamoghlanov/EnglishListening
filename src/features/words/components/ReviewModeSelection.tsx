@@ -10,7 +10,7 @@ import { EmptyState } from "../../../components/common/EmptyState";
 import { IconBubble } from "../../../components/common/IconBubble";
 import { PageHeader } from "../../../components/common/PageHeader";
 import { Grid } from "../../../components/layout/Grid";
-import { Screen } from "../../../components/layout/Screen";
+import { AppScaffold } from "../../../components/layout/AppScaffold";
 import { CEFR_LEVELS, type CEFRLevel } from "../../../config/levels";
 import {
   getPracticeModeConfig,
@@ -55,7 +55,7 @@ export function ReviewModeSelection({ mode }: { mode: ReviewPracticeMode }) {
   }
 
   return (
-    <Screen>
+    <AppScaffold>
       <PageHeader
         title={config.title}
         subtitle={config.emptyMessage}
@@ -94,7 +94,7 @@ export function ReviewModeSelection({ mode }: { mode: ReviewPracticeMode }) {
             ))}
         </Grid>
       )}
-    </Screen>
+    </AppScaffold>
   );
 }
 
@@ -116,7 +116,7 @@ function ReviewCard({
   return (
     <AppCard tone={tone} padding="lg" style={styles.tile} onPress={onPress}>
       <View style={styles.tileTop}>
-        <IconBubble icon={Icon} color={iconColor} backgroundColor={colors.white} />
+        <IconBubble icon={Icon} color={iconColor} backgroundColor={colors.surfaceAlt} />
         <ChevronRight color={colors.muted} size={22} />
       </View>
       <View style={styles.tileCopy}>

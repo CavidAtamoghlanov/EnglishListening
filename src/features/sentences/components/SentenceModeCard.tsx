@@ -19,7 +19,7 @@ export function SentenceModeCard({ config, onStart }: SentenceModeCardProps) {
   return (
     <AppCard padding="lg" onPress={onStart} style={styles.card}>
       <View style={styles.row}>
-        <IconBubble icon={Icon} color={config.iconColor} backgroundColor={colors.primarySoft} size={56} />
+        <IconBubble icon={Icon} color={config.iconColor} backgroundColor={colors.surfaceAlt} size={56} />
         <View style={styles.copy}>
           <AppText variant="h3">{config.title}</AppText>
           <AppText variant="small" color={colors.muted}>
@@ -28,7 +28,7 @@ export function SentenceModeCard({ config, onStart }: SentenceModeCardProps) {
         </View>
         <View style={styles.right}>
           <View style={styles.pill}>
-            <AppText variant="label" color={colors.primaryDark}>
+            <AppText variant="label" color={colors.background}>
               Start
             </AppText>
           </View>
@@ -67,8 +67,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.white,
+    backgroundColor: colors.primary,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.primary,
   },
 });

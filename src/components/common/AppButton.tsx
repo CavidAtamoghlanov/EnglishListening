@@ -22,11 +22,11 @@ type AppButtonProps = PropsWithChildren<{
 }>;
 
 const variants: Record<AppButtonVariant, { bg: string; color: string; border: string }> = {
-  primary: { bg: colors.primary, color: colors.white, border: colors.primary },
-  secondary: { bg: colors.surfaceRaised, color: colors.text, border: colors.border },
+  primary: { bg: colors.primary, color: colors.background, border: colors.primary },
+  secondary: { bg: colors.surfaceRaised, color: colors.text, border: colors.borderStrong },
   ghost: { bg: "transparent", color: colors.primaryDark, border: "transparent" },
   danger: { bg: colors.danger, color: colors.white, border: colors.danger },
-  success: { bg: colors.success, color: colors.white, border: colors.success },
+  success: { bg: colors.success, color: colors.background, border: colors.success },
 };
 
 const sizes: Record<AppButtonSize, { minHeight: number; padding: number; icon: number }> = {
@@ -93,7 +93,7 @@ export function DangerButton(props: Omit<AppButtonProps, "variant">) {
 
 const styles = StyleSheet.create({
   button: {
-    borderRadius: radii.md,
+    borderRadius: radii.lg,
     borderWidth: 1,
     justifyContent: "center",
     alignItems: "center",

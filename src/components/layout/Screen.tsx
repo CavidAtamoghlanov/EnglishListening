@@ -1,12 +1,12 @@
 import { PropsWithChildren, useEffect, useState } from "react";
-import { Animated, Platform, ScrollView, StyleSheet, ViewStyle } from "react-native";
+import { Animated, Platform, ScrollView, StyleProp, StyleSheet, ViewStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "../../theme/colors";
 import { spacing } from "../../theme/spacing";
 
 type ScreenProps = PropsWithChildren<{
   scroll?: boolean;
-  contentStyle?: ViewStyle;
+  contentStyle?: StyleProp<ViewStyle>;
   maxWidth?: number;
 }>;
 
@@ -59,6 +59,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    backgroundColor: colors.background,
   },
   content: {
     width: "100%",

@@ -46,7 +46,7 @@ export default function CreateProfileScreen() {
       />
 
       <AppCard tone="blue" padding="lg" style={styles.card}>
-        <IconBubble icon={UserPlus} size={68} iconSize={30} backgroundColor={colors.white} style={styles.centerBubble} />
+        <IconBubble icon={UserPlus} size={68} iconSize={30} backgroundColor={colors.surfaceAlt} style={styles.centerBubble} />
         <TextInputField
           label="Display name"
           value={name}

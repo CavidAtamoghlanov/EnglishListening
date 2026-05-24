@@ -81,7 +81,7 @@ export default function ProfilePickerScreen() {
   return (
     <Screen maxWidth={760}>
       <AppCard tone="blue" padding="lg" style={styles.hero} elevated={false}>
-        <IconBubble icon={Users} size={68} iconSize={30} backgroundColor={colors.white} />
+        <IconBubble icon={Users} size={68} iconSize={30} backgroundColor={colors.surfaceAlt} />
         <AppText variant="title" style={styles.centerText}>
           Who is practicing today?
         </AppText>

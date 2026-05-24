@@ -37,11 +37,11 @@ export function HeroLearningCard({
         <ProgressBar
           percent={progressPercent}
           height={9}
-          color={colors.white}
-          trackColor="rgba(255,255,255,0.28)"
+          color={colors.progress}
+          trackColor="rgba(255,255,255,0.14)"
         />
         <AppButton
-          variant="secondary"
+          variant="primary"
           icon={ArrowRight}
           onPress={onContinue}
           style={styles.button}
@@ -87,8 +87,8 @@ const styles = StyleSheet.create({
   },
   button: {
     alignSelf: "flex-start",
-    backgroundColor: colors.white,
-    borderColor: colors.white,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   visual: {
     width: 128,

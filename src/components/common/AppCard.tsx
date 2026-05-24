@@ -20,7 +20,7 @@ type AppCardProps = PropsWithChildren<{
 
 const toneBackground: Record<CardTone, string> = {
   default: colors.surfaceRaised,
-  blue: colors.primaryTint,
+  blue: "rgba(56,189,248,0.12)",
   green: colors.successSoft,
   yellow: colors.warningSoft,
   violet: colors.violetSoft,
@@ -96,7 +96,7 @@ export function AppCard({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: radii.xxl,
+    borderRadius: radii.xl,
     borderWidth: 1,
     borderColor: colors.border,
     gap: spacing.md,

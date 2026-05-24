@@ -39,7 +39,7 @@ export function SentenceLevelCard({
     <AppCard style={styles.card} padding="lg">
       <View style={styles.header}>
         <View style={styles.badge}>
-          <AppText variant="h2" color={colors.white}>
+          <AppText variant="h2" color={colors.background}>
             {level}
           </AppText>
         </View>
@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     width: 62,
     height: 62,
     borderRadius: radii.lg,
-    backgroundColor: colors.teal,
+    backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
   },

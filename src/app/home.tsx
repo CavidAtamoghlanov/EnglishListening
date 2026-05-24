@@ -1,36 +1,40 @@
 import { useCallback, useEffect, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import type { ReactNode } from "react";
+import { Pressable, StyleSheet, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import {
+  AlertTriangle,
+  BarChart3,
+  BookOpen,
   Flame,
-  Mic,
+  Heart,
+  Languages,
+  Menu,
+  MessageSquareText,
   Settings,
-  Sparkles,
+  Star,
   Target,
   Users,
 } from "lucide-react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import type { Href } from "expo-router";
 import { AppText } from "../components/common/AppText";
-import { ActionCard } from "../components/common/ActionCard";
-import { AppCard } from "../components/common/AppCard";
-import { ComingSoonRow } from "../components/common/ComingSoonRow";
-import { HeroLearningCard } from "../components/common/HeroLearningCard";
 import { IconButton } from "../components/common/IconButton";
-import { IconBubble } from "../components/common/IconBubble";
-import { SectionTitle } from "../components/common/SectionTitle";
-import { Screen } from "../components/layout/Screen";
-import { Grid } from "../components/layout/Grid";
 import { ProgressBar } from "../components/stats/ProgressBar";
 import { WordsIntroModal } from "../components/words/WordsIntroModal";
+import { AppScaffold } from "../components/layout/AppScaffold";
 import { DEFAULT_CEFR_LEVEL, getLevelConfig } from "../config/levels";
-import { HOME_MODULES, type HomeModuleConfig } from "../config/homeModules";
 import { useActiveProfile } from "../features/profile/hooks/useActiveProfile";
 import { PROFILE_AVATARS } from "../features/profile/services/profileStorageService";
 import { useProgress } from "../features/progress/hooks/useProgress";
 import { useFirstTimeModal } from "../features/words/hooks/useFirstTimeModal";
 import { wordsDataService } from "../features/words/services/wordsDataService";
 import { colors } from "../theme/colors";
+import { gradients } from "../theme/gradients";
+import { radii } from "../theme/radii";
+import { shadows } from "../theme/shadows";
 import { spacing } from "../theme/spacing";
+import { useResponsive } from "../utils/useResponsive";
 
 function countIds(values: string[][]): number {
   return new Set(values.flat()).size;
@@ -38,6 +42,7 @@ function countIds(values: string[][]): number {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { isMobile } = useResponsive();
   const { activeProfile, clearActiveProfile } = useActiveProfile();
   const { progress, reload } = useProgress(activeProfile?.id);
   const intro = useFirstTimeModal(activeProfile?.id);
@@ -64,21 +69,19 @@ export default function HomeScreen() {
   }
 
   const profile = activeProfile;
-  const currentProgress = progress;
-  const heroLevel = currentProgress.lastSelectedLevel ?? DEFAULT_CEFR_LEVEL;
+  const heroLevel = progress.lastSelectedLevel ?? DEFAULT_CEFR_LEVEL;
   const heroConfig = getLevelConfig(heroLevel);
-  const heroProgress = currentProgress.levels[heroLevel];
+  const heroProgress = progress.levels[heroLevel];
   const heroWordCount =
     heroProgress.sessionOrderWordIds.length || wordsDataService.getWordCount(heroLevel);
   const heroWordIndex = Math.min(heroProgress.currentIndex, heroWordCount);
   const heroPercent = heroWordCount > 0 ? (heroWordIndex / heroWordCount) * 100 : 0;
   const canContinue = heroProgress.sessionOrderWordIds.length > 0;
-  const difficultCount = countIds(Object.values(currentProgress.levels).map((level) => level.difficultWordIds));
-  const favoriteCount = countIds(Object.values(currentProgress.levels).map((level) => level.favoriteWordIds));
-  const moduleContext = { progress: currentProgress, difficultCount, favoriteCount };
+  const difficultCount = countIds(Object.values(progress.levels).map((level) => level.difficultWordIds));
+  const favoriteCount = countIds(Object.values(progress.levels).map((level) => level.favoriteWordIds));
   const dailyPercent = Math.min(
     100,
-    Math.round((currentProgress.dailyGoal.completedWords / currentProgress.dailyGoal.targetWords) * 100),
+    Math.round((progress.dailyGoal.completedWords / progress.dailyGoal.targetWords) * 100),
   );
 
   async function goToWordsPractice() {
@@ -96,23 +99,6 @@ export default function HomeScreen() {
     router.push("/words/levels");
   }
 
-  function getModuleDescription(module: HomeModuleConfig): string {
-    return typeof module.description === "function"
-      ? module.description(moduleContext)
-      : module.description;
-  }
-
-  function handleModulePress(module: HomeModuleConfig): void {
-    if (module.id === "words") {
-      void goToWordsPractice();
-      return;
-    }
-
-    if (module.route) {
-      router.push(module.route as Href);
-    }
-  }
-
   function handleContinue() {
     if (canContinue) {
       router.push(`/words/practice/${heroLevel}`);
@@ -122,51 +108,25 @@ export default function HomeScreen() {
     void goToWordsPractice();
   }
 
-  function renderRouteModule(module: HomeModuleConfig) {
-    const Icon = module.icon;
-    const description = getModuleDescription(module);
-
-    return (
-      <ActionCard
-        key={module.id}
-        title={module.title}
-        subtitle={description}
-        icon={Icon}
-        iconColor={module.iconColor}
-        iconBackground={module.tone === "yellow" ? colors.warningSoft : colors.coralSoft}
-        buttonLabel="Review"
-        tone={module.tone}
-        onPress={() => handleModulePress(module)}
-      />
-    );
-  }
-
-  const reviewModules = HOME_MODULES.filter(
-    (module) => module.kind === "route" && (module.visible?.(moduleContext) ?? true),
-  );
-  const comingSoonModules = HOME_MODULES.filter((module) => module.kind === "placeholder");
-
   return (
-    <Screen>
+    <AppScaffold>
       <WordsIntroModal visible={wordsIntroVisible} onContinue={() => void continueAfterIntro()} />
 
-      <View style={styles.header}>
-        <View style={styles.identity}>
-          <IconBubble
-            emoji={profile.avatarEmoji ?? PROFILE_AVATARS[0]}
-            size={58}
-            backgroundColor={colors.white}
-            style={styles.avatar}
-          />
-          <View style={styles.headerCopy}>
-            <AppText variant="h1">Welcome back, {profile.name}!{" \u{1F44B}"}</AppText>
-            <AppText color={colors.muted}>Small daily reps, big speaking confidence.</AppText>
+      <View style={styles.topBar}>
+        <View style={styles.topLeft}>
+          <IconButton icon={Menu} accessibilityLabel="Menu" color={colors.text} />
+          <View>
+            <AppText variant="h2">Home</AppText>
+            <AppText variant="small" color={colors.muted}>
+              Dark learning dashboard
+            </AppText>
           </View>
         </View>
-        <View style={styles.headerActions}>
+        <View style={styles.topActions}>
           <IconButton
             icon={Users}
             accessibilityLabel="Switch profile"
+            color={colors.text}
             onPress={() => {
               clearActiveProfile();
               router.replace("/");
@@ -175,176 +135,309 @@ export default function HomeScreen() {
           <IconButton
             icon={Settings}
             accessibilityLabel="Open settings"
+            color={colors.text}
             onPress={() => router.push("/settings")}
           />
         </View>
       </View>
 
-      <HeroLearningCard
-        levelLabel={heroConfig.title}
-        wordLabel={`Word ${heroWordIndex} of ${heroWordCount}`}
-        progressPercent={heroPercent}
-        onContinue={handleContinue}
-      />
+      <LinearGradient colors={gradients.hero} start={[0, 0]} end={[1, 1]} style={styles.hero}>
+        <View style={styles.avatarRing}>
+          <AppText style={styles.avatar}>{profile.avatarEmoji ?? PROFILE_AVATARS[0]}</AppText>
+        </View>
+        <View style={styles.heroCopy}>
+          <AppText variant="h2">Salam, {profile.name}! 👋</AppText>
+          <AppText color={colors.textSoft}>Səviyyən: {heroLevel}</AppText>
+          <AppText variant="small" color={colors.muted}>
+            {heroConfig.title} · Word {heroWordIndex} / {heroWordCount}
+          </AppText>
+          <ProgressBar percent={heroPercent} height={8} color={colors.progress} trackColor="rgba(255,255,255,0.12)" />
+        </View>
+        <Pressable style={styles.heroButton} onPress={handleContinue}>
+          <AppText style={styles.heroButtonText}>{canContinue ? "Davam et" : "Başla"}</AppText>
+        </Pressable>
+      </LinearGradient>
 
-      <ActionCard
-        title="Words Practice"
-        subtitle="See Azerbaijani words and say them in English."
-        icon={Mic}
-        iconColor={colors.success}
-        iconBackground={colors.successSoft}
-        buttonLabel="Start Practice"
-        tone="green"
-        onPress={() => void goToWordsPractice()}
-      />
-
-      <ActionCard
-        title="Sentence Practice"
-        subtitle="Practice short sentences by speaking aloud."
-        icon={Sparkles}
-        iconColor={colors.primary}
-        iconBackground={colors.primarySoft}
-        buttonLabel="Start"
-        tone="blue"
-        onPress={() => router.push("/sentences")}
-      />
-
-      <View style={styles.statsRow}>
-        <AppCard padding="md" style={styles.statCard}>
-          <View style={styles.statTop}>
-            <IconBubble icon={Target} color={colors.primary} backgroundColor={colors.primarySoft} size={44} />
-            <View style={styles.statCopy}>
-              <AppText variant="label" color={colors.muted}>Daily Goal</AppText>
-              <AppText variant="h2">
-                {currentProgress.dailyGoal.completedWords} / {currentProgress.dailyGoal.targetWords}
-              </AppText>
-              <AppText variant="small" color={colors.muted}>words today</AppText>
-            </View>
-          </View>
-          <ProgressBar percent={dailyPercent} height={8} color={colors.primary} />
-        </AppCard>
-        <AppCard padding="md" style={styles.statCard}>
-          <View style={styles.statTop}>
-            <IconBubble icon={Flame} color={colors.warning} backgroundColor={colors.warningSoft} size={44} />
-            <View style={styles.statCopy}>
-              <AppText variant="label" color={colors.muted}>Streak</AppText>
-              <AppText variant="h2">{currentProgress.currentDayStreak} Day Streak</AppText>
-              <AppText variant="small" color={colors.muted}>
-                Best streak: {currentProgress.bestDayStreak} days
-              </AppText>
-            </View>
-          </View>
-          <WeekDots activeCount={currentProgress.currentDayStreak} />
-        </AppCard>
+      <View style={[styles.statsRow, isMobile && styles.statsRowMobile]}>
+        <MetricCard
+          icon={<Target color={colors.progress} size={22} />}
+          title="Günlük hədəf"
+          value={`${progress.dailyGoal.completedWords} / ${progress.dailyGoal.targetWords}`}
+          detail="söz bugün"
+          progress={dailyPercent}
+        />
+        <MetricCard
+          icon={<Flame color={colors.primary} size={22} />}
+          title="Streak"
+          value={`${progress.currentDayStreak} gün`}
+          detail={`Best: ${progress.bestDayStreak} gün`}
+        />
+        {!isMobile ? (
+          <MetricCard
+            icon={<Star color={colors.secondary} size={22} />}
+            title="Səviyyə"
+            value={heroLevel}
+            detail={heroConfig.title}
+          />
+        ) : null}
       </View>
 
-      {reviewModules.length > 0 ? (
-        <>
-          <SectionTitle title="Review" subtitle="Focused sets from your own saved progress." />
-          <Grid minItemWidth={300} gap={spacing.md}>
-            {reviewModules.map(renderRouteModule)}
-          </Grid>
-        </>
-      ) : null}
+      <View style={styles.sectionHeader}>
+        <AppText variant="h2">Dərslər</AppText>
+        <AppText variant="small" color={colors.muted}>
+          Sözlər, cümlələr və şəxsi təkrarlar
+        </AppText>
+      </View>
 
-      <SectionTitle title="More practice" subtitle="Listening and grammar modules are on the way." />
-      <AppCard padding="md" style={styles.comingSoonList}>
-        {comingSoonModules.map((module) => (
-          <ComingSoonRow
-            key={module.id}
-            title={module.title}
-            subtitle={getModuleDescription(module)}
-            icon={module.icon}
-          />
-        ))}
-      </AppCard>
-    </Screen>
+      <View style={styles.lessonGrid}>
+        <DashboardTile
+          title="Sözlər"
+          subtitle="A1 · A2 · B1 · B2"
+          icon={<BookOpen color={colors.background} size={24} />}
+          gradient={gradients.words}
+          onPress={() => void goToWordsPractice()}
+        />
+        <DashboardTile
+          title="Cümlə təkrarı"
+          subtitle="Repeat"
+          icon={<MessageSquareText color={colors.white} size={24} />}
+          gradient={gradients.repeat}
+          onPress={() => router.push("/sentences")}
+        />
+        <DashboardTile
+          title="Tərcümə & Danış"
+          subtitle="Translate"
+          icon={<Languages color={colors.white} size={24} />}
+          gradient={gradients.translate}
+          onPress={() => router.push("/sentences")}
+        />
+        <DashboardTile
+          title="Favoritlər"
+          subtitle={`${favoriteCount} söz`}
+          icon={<Heart color={colors.white} size={24} />}
+          gradient={gradients.favorites}
+          onPress={() => router.push("/words/favorites")}
+        />
+        <DashboardTile
+          title="Çətin sözlər"
+          subtitle={`${difficultCount} söz`}
+          icon={<AlertTriangle color={colors.white} size={24} />}
+          gradient={gradients.difficult}
+          onPress={() => router.push("/words/review-difficult")}
+        />
+        <DashboardTile
+          title="Statistika"
+          subtitle="İrəliləyiş"
+          icon={<BarChart3 color={colors.white} size={24} />}
+          gradient={gradients.stats}
+          onPress={() => router.push("/statistics" as Href)}
+        />
+      </View>
+    </AppScaffold>
   );
 }
 
-function WeekDots({ activeCount }: { activeCount: number }) {
-  const days = ["M", "T", "W", "T", "F", "S", "S"];
+function MetricCard({
+  icon,
+  title,
+  value,
+  detail,
+  progress,
+}: {
+  icon: ReactNode;
+  title: string;
+  value: string;
+  detail: string;
+  progress?: number;
+}) {
   return (
-    <View style={styles.weekDots}>
-      {days.map((day, index) => {
-        const active = index >= days.length - Math.min(activeCount, days.length);
-        return (
-          <View key={`${day}-${index}`} style={styles.weekItem}>
-            <View style={[styles.weekDot, active ? styles.weekDotActive : null]} />
-            <AppText variant="label" color={active ? colors.primaryDark : colors.muted}>
-              {day}
-            </AppText>
-          </View>
-        );
-      })}
+    <View style={styles.metricCard}>
+      <View style={styles.metricTop}>
+        <View style={styles.metricIcon}>{icon}</View>
+        <View style={styles.metricCopy}>
+          <AppText variant="small" color={colors.muted} style={styles.metricLabel}>
+            {title}
+          </AppText>
+          <AppText variant="h3">{value}</AppText>
+          <AppText variant="small" color={colors.muted}>
+            {detail}
+          </AppText>
+        </View>
+      </View>
+      {typeof progress === "number" ? (
+        <ProgressBar percent={progress} height={7} color={colors.progress} trackColor="rgba(255,255,255,0.10)" />
+      ) : null}
     </View>
   );
 }
 
+function DashboardTile({
+  title,
+  subtitle,
+  icon,
+  gradient,
+  onPress,
+}: {
+  title: string;
+  subtitle: string;
+  icon: ReactNode;
+  gradient: readonly [string, string];
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.tilePressable, pressed && styles.pressed]}
+    >
+      <LinearGradient colors={gradient} start={[0, 0]} end={[1, 1]} style={styles.tile}>
+        <View style={styles.tileIcon}>{icon}</View>
+        <View style={styles.tileCopy}>
+          <AppText variant="h3" color={colors.white}>
+            {title}
+          </AppText>
+          <AppText variant="small" color="rgba(255,255,255,0.82)">
+            {subtitle}
+          </AppText>
+        </View>
+      </LinearGradient>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  header: {
+  topBar: {
     flexDirection: "row",
-    flexWrap: "wrap",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: spacing.lg,
+    gap: spacing.md,
   },
-  identity: {
+  topLeft: {
     flex: 1,
-    minWidth: 260,
+    minWidth: 0,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
   },
-  avatar: {
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  headerCopy: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  headerActions: {
+  topActions: {
     flexDirection: "row",
     gap: spacing.sm,
+  },
+  hero: {
+    minHeight: 140,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    padding: spacing.lg,
+    borderRadius: radii.xxl,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    ...shadows.glow,
+  },
+  avatarRing: {
+    width: 76,
+    height: 76,
+    borderRadius: 30,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.primarySoft,
+    borderWidth: 2,
+    borderColor: colors.primary,
+  },
+  avatar: {
+    fontSize: 38,
+    lineHeight: 44,
+  },
+  heroCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: spacing.xs,
+  },
+  heroButton: {
+    minHeight: 46,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radii.round,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.primary,
+  },
+  heroButtonText: {
+    color: colors.background,
+    fontWeight: "900",
   },
   statsRow: {
     flexDirection: "row",
+    gap: spacing.md,
+  },
+  statsRowMobile: {
+    flexDirection: "column",
+  },
+  metricCard: {
+    flex: 1,
+    minWidth: 180,
+    gap: spacing.md,
+    padding: spacing.lg,
+    borderRadius: radii.xl,
+    backgroundColor: colors.surfaceRaised,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  metricTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+  },
+  metricIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surfaceAlt,
+  },
+  metricCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  metricLabel: {
+    fontWeight: "800",
+  },
+  sectionHeader: {
+    gap: spacing.xs,
+  },
+  lessonGrid: {
+    flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing.md,
   },
-  statCard: {
+  tilePressable: {
     flexGrow: 1,
-    flexBasis: 260,
+    flexBasis: 170,
+    minWidth: 150,
   },
-  statTop: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-  },
-  statCopy: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  weekDots: {
-    flexDirection: "row",
+  tile: {
+    minHeight: 132,
     justifyContent: "space-between",
-    gap: spacing.xs,
+    padding: spacing.lg,
+    borderRadius: radii.xl,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+    overflow: "hidden",
   },
-  weekItem: {
+  tileIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 16,
     alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.18)",
+  },
+  tileCopy: {
     gap: spacing.xs,
   },
-  weekDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 999,
-    backgroundColor: colors.border,
-  },
-  weekDotActive: {
-    backgroundColor: colors.primary,
-  },
-  comingSoonList: {
-    gap: spacing.sm,
+  pressed: {
+    opacity: 0.86,
+    transform: [{ scale: 0.98 }],
   },
 });

@@ -2,9 +2,9 @@ import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { AppText } from "../../../components/common/AppText";
 import type { SentenceWordHint } from "../types";
-import { colors } from "../../../theme/colors";
 import { radii } from "../../../theme/radii";
 import { spacing } from "../../../theme/spacing";
+import { lessonColors } from "../../../components/lesson/lessonTheme";
 
 type SentenceWordChipsProps = {
   displayText: string;
@@ -61,7 +61,9 @@ export function SentenceWordChips({
       </View>
       {activeHint ? (
         <View style={styles.hintBox}>
-          <AppText color={colors.primaryDark}>{activeHint}</AppText>
+          <AppText color={lessonColors.text} style={styles.hintText}>
+            {activeHint}
+          </AppText>
         </View>
       ) : null}
     </View>
@@ -84,32 +86,36 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: radii.lg,
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: "rgba(255,255,255,0.07)",
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: lessonColors.border,
   },
   chipMatched: {
-    backgroundColor: colors.successSoft,
-    borderColor: colors.success,
+    backgroundColor: "rgba(103,213,59,0.14)",
+    borderColor: lessonColors.success,
   },
   chipPressed: {
     opacity: 0.85,
   },
   chipText: {
-    fontSize: 22,
-    lineHeight: 28,
-    color: colors.ink,
-    fontWeight: "600",
+    fontSize: 18,
+    lineHeight: 24,
+    color: lessonColors.text,
+    fontWeight: "800",
   },
   chipTextMatched: {
-    color: colors.success,
+    color: lessonColors.success,
   },
   hintBox: {
     padding: spacing.md,
     borderRadius: radii.lg,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: "rgba(250,204,21,0.10)",
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: "rgba(250,204,21,0.22)",
     maxWidth: "100%",
+  },
+  hintText: {
+    textAlign: "center",
+    fontWeight: "700",
   },
 });

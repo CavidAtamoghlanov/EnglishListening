@@ -3,7 +3,7 @@ import { Sparkles } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { PageHeader } from "../../components/common/PageHeader";
 import { Grid } from "../../components/layout/Grid";
-import { Screen } from "../../components/layout/Screen";
+import { AppScaffold } from "../../components/layout/AppScaffold";
 import { SENTENCE_MODES } from "../../features/sentences/config/modes";
 import { SentenceModeCard } from "../../features/sentences/components/SentenceModeCard";
 import { useActiveProfile } from "../../features/profile/hooks/useActiveProfile";
@@ -24,7 +24,7 @@ export default function SentencePracticeEntryScreen() {
   }
 
   return (
-    <Screen maxWidth={900}>
+    <AppScaffold maxWidth={1100}>
       <PageHeader
         title="Sentence Practice"
         subtitle="Practice short sentences by speaking aloud."
@@ -41,6 +41,6 @@ export default function SentencePracticeEntryScreen() {
           />
         ))}
       </Grid>
-    </Screen>
+    </AppScaffold>
   );
 }

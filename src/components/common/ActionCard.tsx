@@ -42,7 +42,7 @@ export function ActionCard({
         </View>
         <View style={styles.right}>
           <View style={styles.pill}>
-            <AppText variant="label" color={colors.primaryDark}>
+            <AppText variant="label" color={colors.background}>
               {buttonLabel}
             </AppText>
           </View>
@@ -78,8 +78,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.white,
+    backgroundColor: colors.primary,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.primary,
   },
 });

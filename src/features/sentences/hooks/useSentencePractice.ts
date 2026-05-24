@@ -5,6 +5,8 @@ import {
   prepareSentenceSession,
   type SentencePracticeFeedback,
 } from "../services/sentencePracticeService";
+import { getNextIndexAfterSkip, moveCurrentItemToEnd } from "../../practice/utils/queue";
+import { sentenceDataService } from "../services/sentenceDataService";
 import { sentenceProgressStorageService } from "../services/sentenceProgressStorageService";
 import type { SentenceItem, SentenceLevel, SentencePracticeMode } from "../types";
 
@@ -152,6 +154,68 @@ export function useSentencePractice(
     await preparePractice();
   }, [clearTransitionTimeout, level, mode, preparePractice, profileId]);
 
+  const skipCurrentSentence = useCallback(async () => {
+    if (
+      !profileId ||
+      !progress ||
+      !currentSentence ||
+      isAnswerLocked ||
+      practiceSentences.length === 0
+    ) {
+      return false;
+    }
+
+    clearTransitionTimeout();
+
+    const nextOrderIds = moveCurrentItemToEnd(
+      practiceSentences.map((sentence) => sentence.id),
+      currentIndex,
+    );
+    const nextSentences = sentenceDataService.getSentencesByIds(nextOrderIds);
+    const nextIndex = getNextIndexAfterSkip(nextSentences, currentIndex);
+    const nextSentence = nextSentences[nextIndex] ?? null;
+    const levelProgress = progress.levels[mode][level];
+    const updatedProgress = {
+      ...progress,
+      lastSelectedMode: mode,
+      lastSelectedLevel: level,
+      levels: {
+        ...progress.levels,
+        [mode]: {
+          ...progress.levels[mode],
+          [level]: {
+            ...levelProgress,
+            sessionOrderSentenceIds: nextOrderIds,
+            currentIndex: nextIndex,
+            currentSentenceId: nextSentence?.id ?? null,
+            updatedAt: new Date().toISOString(),
+          },
+        },
+      },
+    };
+
+    await sentenceProgressStorageService.saveProgress(profileId, updatedProgress);
+    setProgress(updatedProgress);
+    setPracticeSentences(nextSentences);
+    setPreviousSentence(currentSentence);
+    setCurrentIndex(nextIndex);
+    setFeedback({ type: null, message: null });
+    setSubmittedAnswer(null);
+    setSubmittedAnswerSource(null);
+    setIsAnswerLocked(false);
+    return true;
+  }, [
+    clearTransitionTimeout,
+    currentIndex,
+    currentSentence,
+    isAnswerLocked,
+    level,
+    mode,
+    practiceSentences,
+    profileId,
+    progress,
+  ]);
+
   const stats = progress?.levels[mode][level] ?? null;
 
   return useMemo(
@@ -170,6 +234,7 @@ export function useSentencePractice(
       stats,
       reload: preparePractice,
       submitAnswer,
+      skipCurrentSentence,
       restartLevel,
     }),
     [
@@ -183,6 +248,7 @@ export function useSentencePractice(
       previousSentence,
       progress,
       restartLevel,
+      skipCurrentSentence,
       stats,
       submitAnswer,
       submittedAnswer,

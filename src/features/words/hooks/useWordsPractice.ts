@@ -11,6 +11,8 @@ import {
   type PracticeFeedback,
 } from "../services/wordsPracticeService";
 import type { PracticeMode, WordItem } from "../types";
+import { getNextIndexAfterSkip, moveCurrentItemToEnd } from "../../practice/utils/queue";
+import { wordsDataService } from "../services/wordsDataService";
 
 export type SubmittedAnswerSource = "speech" | "manual";
 
@@ -160,6 +162,62 @@ export function useWordsPractice(
     setProgress(updatedProgress);
   }, [currentWord, profileId, progress]);
 
+  const skipCurrentItem = useCallback(async () => {
+    if (!profileId || !progress || !currentWord || isAnswerLocked || practiceWords.length === 0) {
+      return false;
+    }
+
+    clearTransitionTimeout();
+
+    const nextOrderIds = moveCurrentItemToEnd(
+      practiceWords.map((word) => word.id),
+      currentIndex,
+    );
+    const nextWords = wordsDataService.getWordsByIds(nextOrderIds);
+    const nextIndex = getNextIndexAfterSkip(nextWords, currentIndex);
+    const nextWord = nextWords[nextIndex] ?? null;
+
+    if (mode === "full") {
+      const levelProgress = progress.levels[currentWord.level];
+      const updatedProgress: UserProgress = {
+        ...progress,
+        lastSelectedLevel: selectedLevel,
+        levels: {
+          ...progress.levels,
+          [currentWord.level]: {
+            ...levelProgress,
+            sessionOrderWordIds: nextOrderIds,
+            currentIndex: nextIndex,
+            currentWordId: nextWord?.id ?? null,
+            updatedAt: new Date().toISOString(),
+          },
+        },
+      };
+
+      await progressStorageService.saveProgress(profileId, updatedProgress);
+      setProgress(updatedProgress);
+    }
+
+    setPracticeWords(nextWords);
+    setPreviousWord(currentWord);
+    setCurrentIndex(nextIndex);
+    setFeedback({ type: null, message: null });
+    setSubmittedAnswer(null);
+    setSubmittedAnswerSource(null);
+    setIsAnswerLocked(false);
+    return true;
+  }, [
+    clearTransitionTimeout,
+    currentIndex,
+    currentWord,
+    isAnswerLocked,
+    mode,
+    practiceWords,
+    profileId,
+    progress,
+    selectedLevel,
+  ]);
+
   const restartSelectedLevel = useCallback(async () => {
     if (!profileId || mode !== "full") {
       return;
@@ -195,6 +253,7 @@ export function useWordsPractice(
       stats,
       reload: preparePractice,
       submitAnswer,
+      skipCurrentItem,
       toggleFavorite,
       restartSelectedLevel,
     }),
@@ -212,6 +271,7 @@ export function useWordsPractice(
       progress,
       restartSelectedLevel,
       selectedLevel,
+      skipCurrentItem,
       stats,
       submitAnswer,
       submittedAnswer,

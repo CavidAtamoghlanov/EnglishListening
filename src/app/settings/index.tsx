@@ -11,7 +11,7 @@ import { IconBubble } from "../../components/common/IconBubble";
 import { PageHeader } from "../../components/common/PageHeader";
 import { SegmentedControl } from "../../components/common/SegmentedControl";
 import { TextInputField } from "../../components/common/TextInputField";
-import { Screen } from "../../components/layout/Screen";
+import { AppScaffold } from "../../components/layout/AppScaffold";
 import { CEFR_LEVELS, DEFAULT_CEFR_LEVEL } from "../../config/levels";
 import { useActiveProfile } from "../../features/profile/hooks/useActiveProfile";
 import {
@@ -132,7 +132,7 @@ export default function SettingsScreen() {
   }
 
   return (
-    <Screen maxWidth={820}>
+    <AppScaffold maxWidth={1020}>
       {dialog}
       <PageHeader
         title="Settings"
@@ -162,7 +162,7 @@ export default function SettingsScreen() {
 
       <AppCard tone="green" padding="lg">
         <View style={styles.sectionHeader}>
-          <IconBubble icon={Target} backgroundColor={colors.white} color={colors.success} />
+          <IconBubble icon={Target} backgroundColor={colors.surfaceAlt} color={colors.success} />
           <View style={styles.sectionCopy}>
             <AppText variant="h2">Daily Goal</AppText>
             <AppText color={colors.muted}>
@@ -184,7 +184,7 @@ export default function SettingsScreen() {
 
       <AppCard tone="blue" padding="lg">
         <View style={styles.sectionHeader}>
-          <IconBubble icon={Volume2} backgroundColor={colors.white} color={colors.primary} />
+          <IconBubble icon={Volume2} backgroundColor={colors.surfaceAlt} color={colors.primary} />
           <View style={styles.sectionCopy}>
             <AppText variant="h2">Voice Settings</AppText>
             <AppText color={colors.muted}>Choose a comfortable pronunciation pace and accent preference.</AppText>
@@ -222,7 +222,7 @@ export default function SettingsScreen() {
 
       <AppCard tone="yellow" padding="lg">
         <View style={styles.sectionHeader}>
-          <IconBubble icon={RotateCcw} backgroundColor={colors.white} color={colors.warning} />
+          <IconBubble icon={RotateCcw} backgroundColor={colors.surfaceAlt} color={colors.warning} />
           <View style={styles.sectionCopy}>
             <AppText variant="h2">Progress Controls</AppText>
             <AppText color={colors.muted}>Reset practice state only for {profile.name}.</AppText>
@@ -245,7 +245,7 @@ export default function SettingsScreen() {
 
       <AppCard tone="coral" padding="lg">
         <View style={styles.sectionHeader}>
-          <IconBubble icon={ShieldAlert} backgroundColor={colors.white} color={colors.danger} />
+          <IconBubble icon={ShieldAlert} backgroundColor={colors.surfaceAlt} color={colors.danger} />
           <View style={styles.sectionCopy}>
             <AppText variant="h2">Danger Zone</AppText>
             <AppText color={colors.muted}>
@@ -257,7 +257,7 @@ export default function SettingsScreen() {
           Delete This Profile
         </AppButton>
       </AppCard>
-    </Screen>
+    </AppScaffold>
   );
 }
 

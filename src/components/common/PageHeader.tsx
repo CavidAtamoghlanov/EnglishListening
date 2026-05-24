@@ -24,7 +24,7 @@ export function PageHeader({ title, subtitle, onBack, actions }: PageHeaderProps
             icon={ArrowLeft}
             onPress={onBack}
             accessibilityLabel="Go back"
-            color={colors.textSoft}
+            color={colors.text}
             backgroundColor={colors.surfaceRaised}
             size={44}
             iconSize={20}
@@ -72,6 +72,6 @@ const styles = StyleSheet.create({
     paddingTop: 2,
   },
   title: {
-    color: colors.ink,
+    color: colors.text,
   },
 });

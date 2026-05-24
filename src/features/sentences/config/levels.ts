@@ -1,4 +1,5 @@
 import type { SentenceLevel } from "../types";
+import { SENTENCES_PER_LEVEL } from "../constants";
 
 export const SENTENCE_LEVELS = [
   {
@@ -6,28 +7,28 @@ export const SENTENCE_LEVELS = [
     title: "A1 Sentences",
     description:
       "Short and very simple sentences, usually 2-4 words. Family, daily life, simple needs, basic travel.",
-    sentencesPerLevel: 10,
+    sentencesPerLevel: SENTENCES_PER_LEVEL,
   },
   {
     id: "A2" as const,
     title: "A2 Sentences",
     description:
       "Simple practical sentences, usually 3-5 words. Travel, routine, shopping, basic work, simple technology.",
-    sentencesPerLevel: 10,
+    sentencesPerLevel: SENTENCES_PER_LEVEL,
   },
   {
     id: "B1" as const,
     title: "B1 Sentences",
     description:
       "Intermediate practical sentences, usually 4-6 words. Work, meetings, opinions, travel problems, software basics.",
-    sentencesPerLevel: 10,
+    sentencesPerLevel: SENTENCES_PER_LEVEL,
   },
   {
     id: "B2" as const,
     title: "B2 Sentences",
     description:
       "Professional fluent sentences, usually 5-8 words. Backend, .NET, API, database, debugging, meetings, travel.",
-    sentencesPerLevel: 10,
+    sentencesPerLevel: SENTENCES_PER_LEVEL,
   },
 ] satisfies ReadonlyArray<{
   id: SentenceLevel;

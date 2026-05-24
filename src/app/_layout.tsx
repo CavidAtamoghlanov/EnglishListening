@@ -7,11 +7,11 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ActiveProfileProvider>
-        <StatusBar style="dark" />
+        <StatusBar style="light" />
         <Stack
           screenOptions={{
             headerShown: false,
-            contentStyle: { backgroundColor: "#F7F9FC" },
+            contentStyle: { backgroundColor: "#06111F" },
           }}
         />
       </ActiveProfileProvider>

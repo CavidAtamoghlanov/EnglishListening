@@ -1,38 +1,28 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Animated,
-  Modal,
-  Platform,
-  Pressable,
-  StyleSheet,
-  useWindowDimensions,
-  View,
-} from "react-native";
+import { Animated, Modal, Platform, Pressable, StyleSheet, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Check, Info, Lightbulb, RotateCcw, Send, Star, Volume2, X } from "lucide-react-native";
+import { Check, Info, Lightbulb, SkipForward, Star, Volume2, X } from "lucide-react-native";
 import { AppText } from "../../../components/common/AppText";
 import { AppButton } from "../../../components/common/AppButton";
-import { AppCard } from "../../../components/common/AppCard";
 import { useConfirmDialog } from "../../../components/common/ConfirmDialog";
 import { EmptyState } from "../../../components/common/EmptyState";
-import { IconBubble } from "../../../components/common/IconBubble";
 import { PageHeader } from "../../../components/common/PageHeader";
-import { TextInputField } from "../../../components/common/TextInputField";
 import { Screen } from "../../../components/layout/Screen";
-import { FeedbackPanel } from "../../../components/common/FeedbackPanel";
-import { PracticeActionRow } from "../../../components/common/PracticeActionRow";
-import { PracticeStatsRow } from "../../../components/common/PracticeStatsRow";
-import { ProgressHeaderCard } from "../../../components/common/ProgressHeaderCard";
+import { LessonActionDock } from "../../../components/lesson/LessonActionDock";
+import { LessonCard, type LessonCardTone } from "../../../components/lesson/LessonCard";
+import { LessonFeedbackOverlay } from "../../../components/lesson/LessonFeedbackOverlay";
+import { LessonManualAnswerSheet } from "../../../components/lesson/LessonManualAnswerSheet";
+import { LessonPreviousPanel } from "../../../components/lesson/LessonPreviousPanel";
+import { LessonShell } from "../../../components/lesson/LessonShell";
+import { LessonStatsPanel } from "../../../components/lesson/LessonStatsPanel";
+import { LessonTopBar } from "../../../components/lesson/LessonTopBar";
+import { lessonColors } from "../../../components/lesson/lessonTheme";
 import { getPracticeModeConfig, parsePracticeMode } from "../../../config/reviewModes";
 import { useActiveProfile } from "../../../features/profile/hooks/useActiveProfile";
 import { useSpeechRecognition } from "../../../features/speech/hooks/useSpeechRecognition";
 import { useTextToSpeech } from "../../../features/speech/hooks/useTextToSpeech";
 import { useTapOrDoubleTap } from "../../../features/words/hooks/useTapOrDoubleTap";
-import { PreviousWordCard } from "../../../features/words/components/PreviousWordCard";
 import { useWordsPractice } from "../../../features/words/hooks/useWordsPractice";
-import { colors } from "../../../theme/colors";
-import { radii } from "../../../theme/radii";
-import { spacing } from "../../../theme/spacing";
 
 export default function PracticeScreen() {
   const router = useRouter();
@@ -47,8 +37,6 @@ export default function PracticeScreen() {
   const [recognizedText, setRecognizedText] = useState("");
   const [showHint, setShowHint] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
-  const { width: windowWidth } = useWindowDimensions();
-  const isWideLayout = windowWidth >= 900;
   const feedbackScale = useMemo(() => new Animated.Value(1), []);
   const inputsDisabled = practice.isAnswerLocked;
 
@@ -111,6 +99,17 @@ export default function PracticeScreen() {
     onDoubleTap: () => setShowDetails(true),
   });
 
+  const handleSkip = useCallback(() => {
+    if (inputsDisabled) {
+      return;
+    }
+
+    setManualAnswer("");
+    setRecognizedText("");
+    setShowHint(false);
+    void practice.skipCurrentItem();
+  }, [inputsDisabled, practice]);
+
   if (!activeProfile || practice.isLoading) {
     return null;
   }
@@ -120,6 +119,7 @@ export default function PracticeScreen() {
   const completed = totalWords > 0 && practice.currentIndex >= totalWords;
   const currentNumber = completed ? totalWords : Math.min(practice.currentIndex + 1, totalWords);
   const percent = totalWords > 0 ? (practice.currentIndex / totalWords) * 100 : 0;
+  const remainingWords = Math.max(totalWords - currentNumber, 0);
 
   async function submitManualAnswer() {
     if (!manualAnswer.trim() || inputsDisabled) {
@@ -131,7 +131,7 @@ export default function PracticeScreen() {
 
   const displayedAnswer =
     practice.submittedAnswer ??
-    (practice.submittedAnswerSource === null ? recognizedText : null);
+    (practice.submittedAnswerSource === null ? recognizedText || null : null);
   const answerLabel =
     practice.submittedAnswerSource === "manual"
       ? "Your answer"
@@ -184,48 +184,86 @@ export default function PracticeScreen() {
       : practice.feedback.type === "wrong"
         ? "wrong"
         : "neutral";
+  const cardTone: LessonCardTone = feedbackTone;
+  const cardFeedbackMessage =
+    feedbackTone === "correct"
+      ? "Düzdür!"
+      : feedbackTone === "wrong"
+        ? "Yanlışdır - yenidən cəhd et"
+        : null;
+  const hintText = showHint
+    ? `English: ${currentWord.english}${currentWord.hint ? ` - ${currentWord.hint}` : ""}`
+    : null;
+  const previousWord = practice.previousWord;
 
-  const practiceBody = (
+  return (
     <>
-      <ProgressHeaderCard percent={percent} />
+      <LessonShell
+        sectionTitle="Növbəti söz"
+        primaryNavLabel="Söz"
+        topBar={
+          <LessonTopBar
+            progressPercent={percent}
+            onClose={() => router.back()}
+            onRestart={mode === "full" ? restartLevel : undefined}
+            scoreLabel={`🔥 ${practice.stats?.currentStreak ?? 0}`}
+          />
+        }
+        previousPanel={
+          <LessonPreviousPanel
+            title="Əvvəlki söz"
+            emptyText="Hələ əvvəlki söz yoxdur"
+            icon={previousWord?.icon}
+            primary={previousWord?.azeri}
+            secondary={previousWord?.english}
+            onReplay={previousWord ? () => void speak(previousWord.english) : undefined}
+          />
+        }
+        statsPanel={
+          <LessonStatsPanel
+            attempts={practice.stats?.totalAttempts ?? 0}
+            correct={practice.stats?.correctCount ?? 0}
+            wrong={practice.stats?.wrongCount ?? 0}
+            streak={practice.stats?.currentStreak ?? 0}
+            best={practice.stats?.bestStreak ?? 0}
+            remaining={remainingWords}
+          />
+        }
+      >
+        {dialog}
+        <LessonCard
+          itemKey={currentWord.id}
+          icon={currentWord.icon}
+          prompt={currentWord.azeri}
+          eyebrow={`${activeProfile.name} - ${currentWord.level} - ${currentNumber}/${totalWords}`}
+          tone={cardTone}
+          hintText={hintText}
+          onPress={handleWordTap}
+          onLongPress={() => setShowDetails(true)}
+          onSkip={handleSkip}
+          skipTitle="Yuxarı sürüşdür"
+          skipSubtitle="Sona at"
+          feedbackMessage={cardFeedbackMessage}
+          displayedAnswer={displayedAnswer}
+          answerLabel={answerLabel}
+          topRight={
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={practice.isFavorite ? "Remove favorite" : "Add favorite"}
+              onPress={practice.toggleFavorite}
+              style={({ pressed }) => [styles.starButton, pressed && styles.pressed]}
+            >
+              <Star
+                size={25}
+                color={practice.isFavorite ? lessonColors.yellowButton : lessonColors.muted}
+                fill={practice.isFavorite ? lessonColors.yellowButton : "transparent"}
+              />
+            </Pressable>
+          }
+        />
 
-      <AppCard style={styles.promptCard} padding="lg">
-        <View style={styles.promptTop}>
-          <IconBubble emoji={currentWord.icon} size={72} backgroundColor={colors.mint} style={styles.wordIcon} />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={practice.isFavorite ? "Remove favorite" : "Add favorite"}
-            onPress={practice.toggleFavorite}
-            style={styles.starButton}
-          >
-            <Star
-              size={30}
-              color={practice.isFavorite ? colors.warning : colors.muted}
-              fill={practice.isFavorite ? colors.warning : "transparent"}
-            />
-          </Pressable>
-        </View>
-
-        <Pressable onPress={handleWordTap} onLongPress={() => setShowDetails(true)}>
-          <AppText variant="label" color={colors.muted} style={styles.tapHint}>
-            Tap word for hint · double tap for details
-          </AppText>
-          <AppText variant="title" style={styles.promptWord}>
-            {currentWord.azeri}
-          </AppText>
-        </Pressable>
-
-        {showHint ? (
-          <View style={styles.hint}>
-            <Info color={colors.primary} size={18} />
-            <AppText color={colors.primaryDark}>
-              Hint: {currentWord.hint ?? currentWord.english}
-            </AppText>
-          </View>
-        ) : null}
-
-        <PracticeActionRow
-          pills={[
+        <LessonActionDock
+          actions={[
             {
               label: "Hint",
               icon: Lightbulb,
@@ -237,79 +275,45 @@ export default function PracticeScreen() {
               icon: Volume2,
               onPress: () => void speak(currentWord.english),
             },
+            {
+              label: "Skip",
+              icon: SkipForward,
+              onPress: handleSkip,
+            },
           ]}
           onMicPress={() => void speech.start()}
           isListening={speech.isListening}
           disabled={inputsDisabled}
         />
-      </AppCard>
 
-      <FeedbackPanel
-        displayedAnswer={displayedAnswer}
-        answerLabel={answerLabel}
-        message={practice.feedback.message}
-        tone={feedbackTone}
-        hint={
-          speech.isListening
-            ? "Listening…"
-            : "Use the microphone in the card or type your answer below."
-        }
-        error={
-          speech.manualFallbackRecommended
-            ? speech.error ?? "Speech recognition is unavailable. Type the answer instead."
-            : null
-        }
-        scale={feedbackScale}
-      />
+        {feedbackTone === "neutral" || speech.manualFallbackRecommended ? (
+          <LessonFeedbackOverlay
+            displayedAnswer={displayedAnswer}
+            answerLabel={answerLabel}
+            message={practice.feedback.message}
+            tone={feedbackTone}
+            hint={
+              speech.isListening
+                ? "Listening..."
+                : "Mic işlət, ipucu aç, ya da yazaraq cavabla."
+            }
+            error={
+              speech.manualFallbackRecommended
+                ? speech.error ?? "Speech recognition is unavailable. Type the answer instead."
+                : null
+            }
+            scale={feedbackScale}
+          />
+        ) : null}
 
-      <AppCard padding="md" style={styles.manualCard}>
-        <TextInputField
-          label="Manual answer"
+        <LessonManualAnswerSheet
           value={manualAnswer}
           onChangeText={setManualAnswer}
           placeholder="Type English answer"
-          autoCapitalize="none"
-          returnKeyType="done"
-          editable={!inputsDisabled}
-          onSubmitEditing={() => void submitManualAnswer()}
+          disabled={inputsDisabled}
+          onSubmit={() => void submitManualAnswer()}
         />
-        <AppButton icon={Send} disabled={inputsDisabled} onPress={() => void submitManualAnswer()}>
-          Check
-        </AppButton>
-      </AppCard>
-
-      <PracticeStatsRow
-        attempts={practice.stats?.totalAttempts ?? 0}
-        correct={practice.stats?.correctCount ?? 0}
-        wrong={practice.stats?.wrongCount ?? 0}
-        streak={practice.stats?.currentStreak ?? 0}
-        best={practice.stats?.bestStreak ?? 0}
-      />
-    </>
-  );
-
-  return (
-    <Screen maxWidth={isWideLayout ? 1100 : 720}>
-      {dialog}
-      <PageHeader
-        title="Words Practice"
-        subtitle={`${activeProfile.name} · ${practice.practiceScope === "all" ? "All levels" : currentWord.level} · Word ${currentNumber} / ${totalWords}`}
-        onBack={() => router.back()}
-        actions={
-          mode === "full" ? (
-            <AppButton variant="secondary" size="sm" icon={RotateCcw} onPress={restartLevel}>
-              Restart
-            </AppButton>
-          ) : null
-        }
-      />
-
-      <View style={[styles.practiceLayout, isWideLayout && styles.practiceLayoutWide]}>
-        <View style={styles.practiceMain}>{practiceBody}</View>
-        <View style={[styles.previousWordSlot, isWideLayout && styles.previousWordSlotWide]}>
-          <PreviousWordCard word={practice.previousWord} onReplay={(english) => void speak(english)} />
-        </View>
-      </View>
+      </LessonShell>
 
       <DetailModal
         visible={showDetails}
@@ -320,7 +324,7 @@ export default function PracticeScreen() {
         exampleEn={currentWord.exampleEn}
         exampleAz={currentWord.exampleAz}
       />
-    </Screen>
+    </>
   );
 }
 
@@ -344,132 +348,119 @@ function DetailModal({
   return (
     <Modal visible={visible} animationType="fade" transparent>
       <View style={styles.modalBackdrop}>
-        <AppCard style={styles.detailModal} padding="lg">
+        <View style={styles.detailModal}>
           <View style={styles.modalHeader}>
-            <AppText variant="h2">{english}</AppText>
-            <Pressable accessibilityRole="button" onPress={onClose}>
-              <X color={colors.muted} size={26} />
+            <View style={styles.modalTitle}>
+              <Info color={lessonColors.yellowButton} size={20} />
+              <AppText variant="h2" style={styles.modalHeading}>
+                {english}
+              </AppText>
+            </View>
+            <Pressable accessibilityRole="button" onPress={onClose} style={styles.modalClose}>
+              <X color={lessonColors.muted} size={26} />
             </Pressable>
           </View>
-          <AppText color={colors.muted}>{azeri}</AppText>
+          <AppText style={styles.modalMuted}>{azeri}</AppText>
           <View>
-            <AppText variant="small" color={colors.muted}>
+            <AppText variant="small" style={styles.modalLabel}>
               Synonyms
             </AppText>
-            <AppText>{synonyms.length ? synonyms.join(", ") : "No synonyms listed"}</AppText>
+            <AppText style={styles.modalText}>
+              {synonyms.length ? synonyms.join(", ") : "No synonyms listed"}
+            </AppText>
           </View>
           <View style={styles.example}>
-            <Check color={colors.success} size={20} />
+            <Check color={lessonColors.success} size={20} />
             <View style={styles.exampleCopy}>
-              <AppText>{exampleEn}</AppText>
-              <AppText color={colors.muted}>{exampleAz}</AppText>
+              <AppText style={styles.modalText}>{exampleEn}</AppText>
+              <AppText style={styles.modalMuted}>{exampleAz}</AppText>
             </View>
           </View>
           <AppButton onPress={onClose}>Close</AppButton>
-        </AppCard>
+        </View>
       </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  practiceLayout: {
-    width: "100%",
-    gap: spacing.lg,
-  },
-  practiceLayoutWide: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: spacing.lg,
-  },
-  practiceMain: {
-    flex: 1,
-    minWidth: 0,
-    gap: spacing.lg,
-  },
-  previousWordSlot: {
-    width: "100%",
-    minWidth: 0,
-  },
-  previousWordSlotWide: {
-    width: 280,
-    flexShrink: 0,
-  },
-  promptCard: {
-    alignItems: "center",
-    gap: spacing.md,
-  },
-  promptTop: {
-    width: "100%",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: spacing.xs,
-  },
-  wordIcon: {
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
   starButton: {
-    width: 50,
-    height: 50,
-    borderRadius: radii.lg,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.warningSoft,
+    backgroundColor: "rgba(255,255,255,0.06)",
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: lessonColors.border,
   },
-  tapHint: {
-    textAlign: "center",
-    textTransform: "uppercase",
-  },
-  promptWord: {
-    textAlign: "center",
-    fontSize: 32,
-    lineHeight: 38,
-    color: colors.ink,
-  },
-  hint: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    padding: spacing.md,
-    borderRadius: radii.lg,
-    backgroundColor: colors.primarySoft,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  manualCard: {
-    width: "100%",
-    gap: spacing.sm,
+  pressed: {
+    opacity: 0.78,
+    transform: [{ scale: 0.96 }],
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: colors.overlay,
+    backgroundColor: lessonColors.overlay,
     alignItems: "center",
     justifyContent: "center",
-    padding: spacing.lg,
+    padding: 18,
   },
   detailModal: {
     width: "100%",
     maxWidth: 520,
+    gap: 16,
+    padding: 22,
+    borderRadius: 28,
+    backgroundColor: lessonColors.panel,
+    borderWidth: 1,
+    borderColor: lessonColors.borderStrong,
   },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    gap: spacing.md,
+    gap: 12,
+  },
+  modalTitle: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  modalHeading: {
+    color: lessonColors.text,
+  },
+  modalClose: {
+    width: 42,
+    height: 42,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalLabel: {
+    color: lessonColors.muted,
+    fontWeight: "800",
+  },
+  modalText: {
+    color: lessonColors.text,
+    lineHeight: 22,
+    fontWeight: "700",
+  },
+  modalMuted: {
+    color: lessonColors.muted,
+    lineHeight: 22,
   },
   example: {
     flexDirection: "row",
-    gap: spacing.sm,
-    padding: spacing.md,
-    borderRadius: 16,
-    backgroundColor: colors.successSoft,
+    gap: 8,
+    padding: 12,
+    borderRadius: 18,
+    backgroundColor: "rgba(103,213,59,0.10)",
+    borderWidth: 1,
+    borderColor: "rgba(103,213,59,0.20)",
   },
   exampleCopy: {
     flex: 1,
-    gap: spacing.xs,
+    gap: 4,
   },
 });
