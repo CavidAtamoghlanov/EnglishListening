@@ -14,12 +14,16 @@ export function AppScaffold({ children, maxWidth = 1240, contentStyle }: AppScaf
   const { isMobile } = useResponsive();
 
   return (
-    <Screen maxWidth={maxWidth} contentStyle={[styles.screen, contentStyle]}>
+    <Screen
+      maxWidth={maxWidth}
+      contentStyle={[styles.screen, contentStyle]}
+      fixedFooter={isMobile ? <AppNavigation variant="bottom" /> : undefined}
+      fixedFooterHeight={100}
+    >
       <View style={[styles.shell, !isMobile && styles.shellWide]}>
         {!isMobile ? <AppNavigation variant="sidebar" /> : null}
         <View style={styles.main}>
           {children}
-          {isMobile ? <AppNavigation /> : null}
         </View>
       </View>
     </Screen>

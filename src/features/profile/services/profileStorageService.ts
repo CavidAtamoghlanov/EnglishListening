@@ -1,8 +1,11 @@
 import { storageKeys, storageService } from "../../../storage/storageService";
 import { createId } from "../../../utils/ids";
 import { progressStorageService } from "../../progress/services/progressStorageService";
+import { grammarProgressStorageService } from "../../grammar/services/grammarProgressStorageService";
+import { learningProfileService } from "../../learning/services/learningProfileService";
 import { sentenceProgressStorageService } from "../../sentences/services/sentenceProgressStorageService";
 import { settingsStorageService } from "../../settings/services/settingsStorageService";
+import { writingProgressStorageService } from "../../writing/services/writingProgressStorageService";
 import type { UserProfile } from "../types";
 
 export const PROFILE_AVATARS = [
@@ -46,6 +49,15 @@ export const profileStorageService = {
     const profiles = await this.getProfiles();
     await this.saveProfiles([profile, ...profiles]);
     await progressStorageService.createProgress(profile.id);
+    await grammarProgressStorageService.saveProgress(
+      profile.id,
+      await grammarProgressStorageService.getProgress(profile.id),
+    );
+    await writingProgressStorageService.saveProgress(
+      profile.id,
+      await writingProgressStorageService.getProgress(profile.id),
+    );
+    await learningProfileService.initializeProfile(profile.id);
     await settingsStorageService.saveSettings(
       profile.id,
       await settingsStorageService.getSettings(profile.id),
@@ -87,6 +99,9 @@ export const profileStorageService = {
     await this.saveProfiles(profiles.filter((profile) => profile.id !== profileId));
     await progressStorageService.deleteProgress(profileId);
     await sentenceProgressStorageService.deleteProgress(profileId);
+    await grammarProgressStorageService.deleteProgress(profileId);
+    await writingProgressStorageService.deleteProgress(profileId);
+    await learningProfileService.deleteProfileLearningData(profileId);
     await settingsStorageService.deleteSettings(profileId);
   },
 };

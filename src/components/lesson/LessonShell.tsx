@@ -2,13 +2,12 @@ import { PropsWithChildren, ReactNode } from "react";
 import { ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AppText } from "../common/AppText";
-import { LessonBottomNav } from "./LessonBottomNav";
+import { AppNavigation } from "../common/AppNavigation";
 import { lessonColors } from "./lessonTheme";
 
 type LessonShellProps = PropsWithChildren<{
   topBar: ReactNode;
   sectionTitle: string;
-  primaryNavLabel: string;
   previousPanel: ReactNode;
   statsPanel: ReactNode;
 }>;
@@ -16,7 +15,6 @@ type LessonShellProps = PropsWithChildren<{
 export function LessonShell({
   topBar,
   sectionTitle,
-  primaryNavLabel,
   previousPanel,
   statsPanel,
   children,
@@ -36,7 +34,7 @@ export function LessonShell({
         <View style={[styles.container, isDesktop && styles.containerDesktop]}>
           {isTabletOrWide ? (
             <View style={styles.rail}>
-              <LessonBottomNav primaryLabel={primaryNavLabel} vertical />
+              <AppNavigation variant="sidebar" />
             </View>
           ) : null}
 
@@ -58,12 +56,16 @@ export function LessonShell({
               <View style={styles.mobilePanels}>
                 {previousPanel}
                 {statsPanel}
-                <LessonBottomNav primaryLabel={primaryNavLabel} />
               </View>
             ) : null}
           </View>
         </View>
       </ScrollView>
+      {!isTabletOrWide ? (
+        <View style={styles.fixedFooter} pointerEvents="box-none">
+          <AppNavigation variant="bottom" />
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -77,11 +79,13 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: 18,
     paddingVertical: 14,
+    paddingBottom: 104,
     backgroundColor: lessonColors.background,
   },
   scrollContentWide: {
     paddingHorizontal: 24,
     paddingVertical: 22,
+    paddingBottom: 22,
   },
   container: {
     width: "100%",
@@ -133,5 +137,13 @@ const styles = StyleSheet.create({
   },
   mobilePanels: {
     gap: 12,
+  },
+  fixedFooter: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    bottom: 8,
+    paddingTop: 8,
+    backgroundColor: "rgba(7,17,31,0.92)",
   },
 });

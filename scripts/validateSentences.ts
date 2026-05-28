@@ -6,6 +6,7 @@ import type { SentenceItem, SentenceLevel, SentencePracticeMode } from "../src/f
 
 const dataRoot = path.join(process.cwd(), "src", "data", "sentences");
 const modes: SentencePracticeMode[] = ["repeat", "translate"];
+const strict = process.argv.includes("--strict");
 
 function readFile(mode: SentencePracticeMode, level: SentenceLevel): SentenceItem[] {
   const filePath = path.join(dataRoot, mode, `${level.toLowerCase()}.json`);
@@ -25,10 +26,12 @@ function expectedId(mode: SentencePracticeMode, level: SentenceLevel, index: num
 
 function main() {
   const errors: string[] = [];
+  const countWarnings: string[] = [];
   const globalIds = new Set<string>();
 
   console.log("Sentence validation report");
   console.log("-------------------------");
+  console.log(`Mode: ${strict ? "strict target counts" : "schema + count report"}`);
 
   for (const mode of modes) {
     for (const level of SENTENCE_LEVEL_IDS) {
@@ -36,7 +39,12 @@ function main() {
       console.log(`${mode}/${level}: ${items.length} / ${SENTENCES_PER_LEVEL}`);
 
       if (items.length !== SENTENCES_PER_LEVEL) {
-        errors.push(`${mode}/${level}: expected ${SENTENCES_PER_LEVEL} items, found ${items.length}`);
+        const message = `${mode}/${level}: expected ${SENTENCES_PER_LEVEL} items, found ${items.length}`;
+        if (strict) {
+          errors.push(message);
+        } else {
+          countWarnings.push(message);
+        }
       }
 
       const englishInFile = new Set<string>();
@@ -92,6 +100,12 @@ function main() {
     }
   }
 
+  if (countWarnings.length > 0) {
+    console.log("\nCount warnings:");
+    countWarnings.forEach((warning) => console.log(`- ${warning}`));
+    console.log("Run npm run validate:sentences:strict to enforce target counts.");
+  }
+
   if (errors.length > 0) {
     console.log("\nErrors:");
     errors.forEach((error) => console.log(`- ${error}`));
@@ -99,7 +113,7 @@ function main() {
     return;
   }
 
-  console.log("\nAll sentence files passed validation.");
+  console.log("\nAll sentence files passed schema validation.");
 }
 
 try {

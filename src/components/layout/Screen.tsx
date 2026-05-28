@@ -1,5 +1,5 @@
-import { PropsWithChildren, useEffect, useState } from "react";
-import { Animated, Platform, ScrollView, StyleProp, StyleSheet, ViewStyle } from "react-native";
+import { PropsWithChildren, ReactNode, useEffect, useState } from "react";
+import { Animated, Platform, ScrollView, StyleProp, StyleSheet, View, ViewStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "../../theme/colors";
 import { spacing } from "../../theme/spacing";
@@ -7,10 +7,19 @@ import { spacing } from "../../theme/spacing";
 type ScreenProps = PropsWithChildren<{
   scroll?: boolean;
   contentStyle?: StyleProp<ViewStyle>;
+  fixedFooter?: ReactNode;
+  fixedFooterHeight?: number;
   maxWidth?: number;
 }>;
 
-export function Screen({ children, scroll = true, contentStyle, maxWidth = 1060 }: ScreenProps) {
+export function Screen({
+  children,
+  scroll = true,
+  contentStyle,
+  fixedFooter,
+  fixedFooterHeight = 96,
+  maxWidth = 1060,
+}: ScreenProps) {
   const [opacity] = useState(() => new Animated.Value(Platform.OS === "web" ? 1 : 0));
   const [translateY] = useState(() => new Animated.Value(Platform.OS === "web" ? 0 : 8));
 
@@ -44,10 +53,22 @@ export function Screen({ children, scroll = true, contentStyle, maxWidth = 1060 
   return (
     <SafeAreaView style={styles.safeArea}>
       {scroll ? (
-        <ScrollView contentContainerStyle={styles.scrollContent}>{content}</ScrollView>
+        <ScrollView
+          contentContainerStyle={[
+            styles.scrollContent,
+            fixedFooter ? { paddingBottom: fixedFooterHeight } : null,
+          ]}
+        >
+          {content}
+        </ScrollView>
       ) : (
         content
       )}
+      {fixedFooter ? (
+        <View style={styles.fixedFooter} pointerEvents="box-none">
+          <View style={[styles.fixedFooterInner, { maxWidth }]}>{fixedFooter}</View>
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -66,5 +87,19 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     padding: spacing.xl2,
     gap: spacing.lg,
+  },
+  fixedFooter: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
+    backgroundColor: "rgba(6,17,31,0.92)",
+  },
+  fixedFooterInner: {
+    width: "100%",
+    alignSelf: "center",
   },
 });

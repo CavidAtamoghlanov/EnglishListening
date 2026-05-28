@@ -1,22 +1,43 @@
 import { Pressable, StyleSheet, View } from "react-native";
-import { BarChart3, BookOpen, Home, MessageSquareText, UserRound } from "lucide-react-native";
+import {
+  BarChart3,
+  BookOpen,
+  ClipboardCheck,
+  FilePenLine,
+  Home,
+  MessageSquareText,
+  RefreshCw,
+  UserRound,
+} from "lucide-react-native";
 import type { Href } from "expo-router";
 import { usePathname, useRouter } from "expo-router";
 import { AppText } from "./AppText";
 import { colors } from "../../theme/colors";
 import { radii } from "../../theme/radii";
 import { spacing } from "../../theme/spacing";
+import { useResponsive } from "../../utils/useResponsive";
 
 type AppNavigationProps = {
-  variant?: "bottom" | "sidebar";
+  variant?: "auto" | "bottom" | "sidebar";
 };
 
-const items = [
+const mobileItems = [
   { label: "Home", route: "/home", icon: Home },
-  { label: "Sözlər", route: "/words/levels", icon: BookOpen },
-  { label: "Cümlələr", route: "/sentences", icon: MessageSquareText },
-  { label: "Statistika", route: "/statistics", icon: BarChart3 },
-  { label: "Profil", route: "/settings", icon: UserRound },
+  { label: "Words", route: "/words/levels", icon: BookOpen },
+  { label: "Sentences", route: "/sentences", icon: MessageSquareText },
+  { label: "Review", route: "/review", icon: RefreshCw },
+  { label: "Profile", route: "/settings", icon: UserRound },
+] as const;
+
+const desktopItems = [
+  mobileItems[0],
+  mobileItems[1],
+  mobileItems[2],
+  { label: "Grammar", route: "/grammar", icon: ClipboardCheck },
+  { label: "Writing", route: "/writing", icon: FilePenLine },
+  mobileItems[3],
+  { label: "Statistics", route: "/statistics", icon: BarChart3 },
+  mobileItems[4],
 ] as const;
 
 function isActive(pathname: string, route: string) {
@@ -30,10 +51,13 @@ function isActive(pathname: string, route: string) {
   return root ? pathname.startsWith(`/${root}`) : pathname === route;
 }
 
-export function AppNavigation({ variant = "bottom" }: AppNavigationProps) {
+export function AppNavigation({ variant = "auto" }: AppNavigationProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const vertical = variant === "sidebar";
+  const { isMobile } = useResponsive();
+  const resolvedVariant = variant === "auto" ? (isMobile ? "bottom" : "sidebar") : variant;
+  const vertical = resolvedVariant === "sidebar";
+  const items = vertical ? desktopItems : mobileItems;
 
   return (
     <View style={[styles.nav, vertical && styles.navVertical]}>

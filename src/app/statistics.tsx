@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
-import { BarChart3, Flame, Target, Trophy } from "lucide-react-native";
+import { BarChart3, Flame, RefreshCw, Target, Trophy, Zap } from "lucide-react-native";
 import { AppScaffold } from "../components/layout/AppScaffold";
 import { AppText } from "../components/common/AppText";
 import { SegmentedControl } from "../components/common/SegmentedControl";
@@ -13,6 +13,11 @@ import { useProgress } from "../features/progress/hooks/useProgress";
 import { useSentenceProgress } from "../features/sentences/hooks/useSentenceProgress";
 import { SENTENCE_LEVEL_IDS } from "../features/sentences/config/levels";
 import type { SentencePracticeMode } from "../features/sentences/types";
+import { useGrammarProgress } from "../features/grammar/hooks/useGrammarProgress";
+import { useLearningSummary } from "../features/learning/hooks/useLearningSummary";
+import { learningEventService } from "../features/learning/services/learningEventService";
+import type { LearningEvent } from "../features/learning/types";
+import { useWritingProgress } from "../features/writing/hooks/useWritingProgress";
 import { colors } from "../theme/colors";
 import { gradients } from "../theme/gradients";
 import { radii } from "../theme/radii";
@@ -20,12 +25,15 @@ import { shadows } from "../theme/shadows";
 import { spacing } from "../theme/spacing";
 import { useResponsive } from "../utils/useResponsive";
 
-type StatsTab = "overall" | "words" | "sentences";
+type StatsTab = "overall" | "words" | "sentences" | "grammar" | "writing" | "review";
 
 const tabs: { label: string; value: StatsTab }[] = [
-  { label: "Ümumi", value: "overall" },
-  { label: "Sözlər", value: "words" },
-  { label: "Cümlələr", value: "sentences" },
+  { label: "Overall", value: "overall" },
+  { label: "Words", value: "words" },
+  { label: "Sentences", value: "sentences" },
+  { label: "Grammar", value: "grammar" },
+  { label: "Writing", value: "writing" },
+  { label: "Review", value: "review" },
 ];
 
 const sentenceModes: SentencePracticeMode[] = ["repeat", "translate"];
@@ -36,6 +44,10 @@ export default function StatisticsScreen() {
   const { activeProfile } = useActiveProfile();
   const { progress, reload: reloadWords } = useProgress(activeProfile?.id);
   const { progress: sentenceProgress, reload: reloadSentences } = useSentenceProgress(activeProfile?.id);
+  const { progress: grammarProgress, reload: reloadGrammar } = useGrammarProgress(activeProfile?.id);
+  const { progress: writingProgress, reload: reloadWriting } = useWritingProgress(activeProfile?.id);
+  const { summary: learningSummary, reload: reloadLearningSummary } = useLearningSummary(activeProfile?.id);
+  const [learningEvents, setLearningEvents] = useState<LearningEvent[]>([]);
   const [tab, setTab] = useState<StatsTab>("overall");
 
   useEffect(() => {
@@ -49,8 +61,19 @@ export default function StatisticsScreen() {
       if (activeProfile?.id) {
         void reloadWords();
         void reloadSentences();
+        void reloadGrammar();
+        void reloadWriting();
+        void reloadLearningSummary();
+        void learningEventService.getLearningEvents(activeProfile.id).then(setLearningEvents);
       }
-    }, [activeProfile?.id, reloadSentences, reloadWords]),
+    }, [
+      activeProfile?.id,
+      reloadGrammar,
+      reloadLearningSummary,
+      reloadSentences,
+      reloadWords,
+      reloadWriting,
+    ]),
   );
 
   const stats = useMemo(() => {
@@ -58,6 +81,13 @@ export default function StatisticsScreen() {
     const sentenceLevels = sentenceProgress
       ? sentenceModes.flatMap((mode) => SENTENCE_LEVEL_IDS.map((level) => sentenceProgress.levels[mode][level]))
       : [];
+    const grammarLevels = grammarProgress
+      ? Object.values(grammarProgress.levels).flatMap((levelsByLevel) => Object.values(levelsByLevel))
+      : [];
+    const writingLevels = writingProgress
+      ? Object.values(writingProgress.levels).flatMap((levelsByLevel) => Object.values(levelsByLevel))
+      : [];
+    const reviewEvents = learningEvents.filter((event) => event.activityType === "review");
 
     const wordCorrect = wordLevels.reduce((sum, level) => sum + level.correctCount, 0);
     const wordWrong = wordLevels.reduce((sum, level) => sum + level.wrongCount, 0);
@@ -68,27 +98,102 @@ export default function StatisticsScreen() {
       (sum, level) => sum + level.completedSentenceIds.length,
       0,
     );
-    const correct = tab === "sentences" ? sentenceCorrect : tab === "words" ? wordCorrect : wordCorrect + sentenceCorrect;
-    const wrong = tab === "sentences" ? sentenceWrong : tab === "words" ? wordWrong : wordWrong + sentenceWrong;
-    const completed =
-      tab === "sentences" ? sentenceCompleted : tab === "words" ? wordCompleted : wordCompleted + sentenceCompleted;
+    const grammarCorrect = grammarLevels.reduce((sum, level) => sum + level.correctCount, 0);
+    const grammarWrong = grammarLevels.reduce((sum, level) => sum + level.wrongCount, 0);
+    const grammarCompleted = grammarLevels.reduce(
+      (sum, level) => sum + level.completedExerciseIds.length,
+      0,
+    );
+    const writingCorrect = writingLevels.reduce((sum, level) => sum + level.correctCount, 0);
+    const writingWrong = writingLevels.reduce((sum, level) => sum + level.wrongCount, 0);
+    const writingCompleted = writingLevels.reduce((sum, level) => sum + level.completedItemIds.length, 0);
+    const reviewCorrect = reviewEvents.filter((event) => event.result === "correct").length;
+    const reviewWrong = reviewEvents.filter((event) => event.result === "wrong").length;
+
+    const moduleRows = [
+      { key: "words" as const, label: "Words", correct: wordCorrect, wrong: wordWrong, completed: wordCompleted },
+      {
+        key: "sentences" as const,
+        label: "Sentences",
+        correct: sentenceCorrect,
+        wrong: sentenceWrong,
+        completed: sentenceCompleted,
+      },
+      {
+        key: "grammar" as const,
+        label: "Grammar",
+        correct: grammarCorrect,
+        wrong: grammarWrong,
+        completed: grammarCompleted,
+      },
+      {
+        key: "writing" as const,
+        label: "Writing",
+        correct: writingCorrect,
+        wrong: writingWrong,
+        completed: writingCompleted,
+      },
+      {
+        key: "review" as const,
+        label: "Review",
+        correct: reviewCorrect,
+        wrong: reviewWrong,
+        completed: reviewCorrect,
+      },
+    ];
+
+    const selected =
+      tab === "overall"
+        ? {
+            correct: moduleRows.reduce((sum, row) => sum + row.correct, 0),
+            wrong: moduleRows.reduce((sum, row) => sum + row.wrong, 0),
+            completed: moduleRows.reduce((sum, row) => sum + row.completed, 0),
+          }
+        : moduleRows.find((row) => row.key === tab) ?? {
+            correct: 0,
+            wrong: 0,
+            completed: 0,
+          };
+    const correct = selected.correct;
+    const wrong = selected.wrong;
+    const completed = selected.completed;
     const attempts = correct + wrong;
     const ratio = attempts > 0 ? Math.round((correct / attempts) * 100) : 0;
+    const rowsWithAttempts = moduleRows
+      .map((row) => ({
+        ...row,
+        attempts: row.correct + row.wrong,
+        ratio: row.correct + row.wrong > 0 ? Math.round((row.correct / (row.correct + row.wrong)) * 100) : 0,
+      }))
+      .filter((row) => row.attempts > 0);
+    const strongest = [...rowsWithAttempts].sort((a, b) => b.ratio - a.ratio)[0]?.label ?? "Not enough data";
+    const weakest = [...rowsWithAttempts].sort((a, b) => a.ratio - b.ratio)[0]?.label ?? "Not enough data";
 
     return {
       attempts,
       completed,
       correct,
+      grammarCompleted,
+      grammarCorrect,
+      grammarWrong,
+      moduleRows,
       ratio,
+      reviewCorrect,
+      reviewWrong,
       sentenceCompleted,
       sentenceCorrect,
       sentenceWrong,
+      strongest,
+      weakest,
+      writingCompleted,
+      writingCorrect,
+      writingWrong,
       wordCompleted,
       wordCorrect,
       wordWrong,
       wrong,
     };
-  }, [progress, sentenceProgress, tab]);
+  }, [grammarProgress, learningEvents, progress, sentenceProgress, tab, writingProgress]);
 
   if (!activeProfile || !progress) {
     return null;
@@ -98,19 +203,26 @@ export default function StatisticsScreen() {
     100,
     Math.round((progress.dailyGoal.completedWords / progress.dailyGoal.targetWords) * 100),
   );
+  const xp = learningSummary?.xp;
+  const dueReviewCount = learningSummary?.dueReviewItems.length ?? 0;
+  const dailyPath = learningSummary?.dailyPath;
+  const dailyPathPercent =
+    dailyPath && dailyPath.totalTasks > 0
+      ? Math.round((dailyPath.completedTasks / dailyPath.totalTasks) * 100)
+      : 0;
   const weeklyValues = createChartValues(stats.correct, stats.wrong);
 
   return (
     <AppScaffold>
       <View style={styles.header}>
         <View>
-          <AppText variant="h1">Statistika</AppText>
-          <AppText color={colors.muted}>Progress for {activeProfile.name}</AppText>
+          <AppText variant="h1">Statistics</AppText>
+          <AppText color={colors.muted}>Learning dashboard for {activeProfile.name}</AppText>
         </View>
         <View style={styles.gem}>
-          <AppText style={styles.gemText}>💎</AppText>
+          <Zap color={colors.secondary} size={18} />
           <AppText variant="label" color={colors.white}>
-            {stats.correct + progress.bestDayStreak}
+            {xp?.todayXp ?? 0} XP today
           </AppText>
         </View>
       </View>
@@ -124,7 +236,7 @@ export default function StatisticsScreen() {
           </View>
           <View style={styles.heroCopy}>
             <AppText variant="small" color="rgba(255,255,255,0.78)">
-              Gündəlik hədəf
+              Daily goal
             </AppText>
             <AppText variant="h1" color={colors.white}>
               {progress.dailyGoal.completedWords} / {progress.dailyGoal.targetWords}
@@ -136,14 +248,32 @@ export default function StatisticsScreen() {
         <StatPanel
           icon={<Flame color={colors.primary} size={24} />}
           title="Streak"
-          value={`${progress.currentDayStreak} gün`}
-          detail={`Best streak: ${progress.bestDayStreak} gün`}
+          value={`${progress.currentDayStreak} days`}
+          detail={`Best streak: ${progress.bestDayStreak} days`}
         />
         <StatPanel
           icon={<Trophy color={colors.secondary} size={24} />}
-          title="Düz cavab nisbəti"
+          title="Correct ratio"
           value={`${stats.ratio}%`}
-          detail={`${stats.correct} düz · ${stats.wrong} yanlış`}
+          detail={`${stats.correct} correct - ${stats.wrong} wrong`}
+        />
+        <StatPanel
+          icon={<Zap color={colors.secondary} size={24} />}
+          title="XP level"
+          value={`${xp?.totalXp ?? 0} XP`}
+          detail={xp?.levelTitle ?? "Beginner Explorer"}
+        />
+        <StatPanel
+          icon={<RefreshCw color={colors.progress} size={24} />}
+          title="Review due"
+          value={`${dueReviewCount} items`}
+          detail="Spaced repetition queue"
+        />
+        <StatPanel
+          icon={<Target color={colors.primary} size={24} />}
+          title="Daily path"
+          value={`${dailyPath?.completedTasks ?? 0} / ${dailyPath?.totalTasks ?? 0}`}
+          detail={`${dailyPathPercent}% complete`}
         />
       </View>
 
@@ -154,7 +284,7 @@ export default function StatisticsScreen() {
               <BarChart3 color={colors.progress} size={20} />
             </View>
             <View>
-              <AppText variant="h2">İrəliləyiş qrafiki</AppText>
+              <AppText variant="h2">Progress markers</AppText>
               <AppText variant="small" color={colors.muted}>
                 Last 7 practice markers
               </AppText>
@@ -178,6 +308,21 @@ export default function StatisticsScreen() {
           <SummaryRow label="Correct" value={String(stats.correct)} color={colors.success} />
           <SummaryRow label="Wrong" value={String(stats.wrong)} color={colors.danger} />
           <SummaryRow label="Attempts" value={String(stats.attempts)} color={colors.teal} />
+          <SummaryRow label="Strongest" value={stats.strongest} color={colors.success} />
+          <SummaryRow label="Needs work" value={stats.weakest} color={colors.warning} />
+        </View>
+
+        <View style={styles.summaryCard}>
+          <AppText variant="h2">Module Breakdown</AppText>
+          {stats.moduleRows.map((row) => (
+            <ModuleRow
+              key={row.key}
+              label={row.label}
+              correct={row.correct}
+              wrong={row.wrong}
+              completed={row.completed}
+            />
+          ))}
         </View>
       </View>
     </AppScaffold>
@@ -228,6 +373,38 @@ function SummaryRow({ label, value, color }: { label: string; value: string; col
   );
 }
 
+function ModuleRow({
+  label,
+  correct,
+  wrong,
+  completed,
+}: {
+  label: string;
+  correct: number;
+  wrong: number;
+  completed: number;
+}) {
+  const attempts = correct + wrong;
+  const percent = attempts > 0 ? Math.round((correct / attempts) * 100) : 0;
+
+  return (
+    <View style={styles.moduleRow}>
+      <View style={styles.moduleRowHeader}>
+        <AppText variant="small" color={colors.textSoft} style={styles.summaryLabel}>
+          {label}
+        </AppText>
+        <AppText variant="small" color={colors.muted}>
+          {completed} done
+        </AppText>
+      </View>
+      <ProgressBar percent={percent} height={7} color={colors.progress} trackColor="rgba(255,255,255,0.10)" />
+      <AppText variant="small" color={colors.muted}>
+        {correct} correct - {wrong} wrong
+      </AppText>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
@@ -252,11 +429,13 @@ const styles = StyleSheet.create({
   topGrid: {
     flexDirection: "row",
     gap: spacing.md,
+    flexWrap: "wrap",
   },
   contentGrid: {
     flexDirection: "row",
     alignItems: "stretch",
     gap: spacing.md,
+    flexWrap: "wrap",
   },
   singleColumn: {
     flexDirection: "column",
@@ -276,6 +455,7 @@ const styles = StyleSheet.create({
   },
   statPanel: {
     flex: 1,
+    minWidth: 180,
     minHeight: 150,
     gap: spacing.md,
     padding: spacing.lg,
@@ -369,5 +549,17 @@ const styles = StyleSheet.create({
   summaryLabel: {
     flex: 1,
     fontWeight: "800",
+  },
+  moduleRow: {
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  moduleRowHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
   },
 });

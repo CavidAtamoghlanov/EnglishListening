@@ -11,8 +11,10 @@ import {
   type PracticeFeedback,
 } from "../services/wordsPracticeService";
 import type { PracticeMode, WordItem } from "../types";
+import { isAnswerCorrect } from "../utils/answerUtils";
 import { getNextIndexAfterSkip, moveCurrentItemToEnd } from "../../practice/utils/queue";
 import { wordsDataService } from "../services/wordsDataService";
+import { learningRecorderService } from "../../learning/services/learningRecorderService";
 
 export type SubmittedAnswerSource = "speech" | "manual";
 
@@ -41,6 +43,7 @@ export function useWordsPractice(
   );
   const [isAnswerLocked, setIsAnswerLocked] = useState(false);
   const transitionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const submissionInFlightRef = useRef(false);
 
   const clearTransitionTimeout = useCallback(() => {
     if (transitionTimeoutRef.current) {
@@ -95,7 +98,7 @@ export function useWordsPractice(
 
   const submitAnswer = useCallback(
     async (answer: string, source: SubmittedAnswerSource) => {
-      if (!profileId || !progress || !currentWord || isAnswerLocked) {
+      if (!profileId || !progress || !currentWord || isAnswerLocked || submissionInFlightRef.current) {
         return false;
       }
 
@@ -104,41 +107,131 @@ export function useWordsPractice(
         return false;
       }
 
+      submissionInFlightRef.current = true;
       clearTransitionTimeout();
 
-      const result = applyPracticeAnswer({
-        progress,
-        currentWord,
-        answer: trimmed,
-        currentIndex,
-        mode,
-        selectedLevel,
-      });
+      try {
+        const levelProgress = progress.levels[currentWord.level];
+        const alreadyCompleted = levelProgress.completedWordIds.includes(currentWord.id);
 
-      await progressStorageService.saveProgress(profileId, result.progress);
-      setProgress(result.progress);
-      setFeedback(result.feedback);
-      setSubmittedAnswer(trimmed);
-      setSubmittedAnswerSource(source);
+        if (alreadyCompleted) {
+          const correct = isAnswerCorrect(currentWord, trimmed);
+          setFeedback({
+            type: correct ? "correct" : "wrong",
+            message: correct ? "Good!" : "Try again. You are close.",
+          });
+          setSubmittedAnswer(trimmed);
+          setSubmittedAnswerSource(source);
+          await learningRecorderService.recordPracticeResult({
+            profileId,
+            module: "words",
+            activityType: "speak",
+            level: currentWord.level,
+            itemId: currentWord.id,
+            prompt: currentWord.azeri,
+            correctAnswer: currentWord.english,
+            userAnswer: trimmed,
+            result: correct ? "correct" : "wrong",
+            explanationAz: currentWord.exampleAz,
+            awardXp: false,
+          });
 
-      if (!result.correct) {
-        return false;
+          if (!correct) {
+            return false;
+          }
+
+          const nextIndex = currentIndex + 1;
+          const updatedLevel =
+            mode === "full" && currentWord.level === selectedLevel
+              ? {
+                  ...levelProgress,
+                  currentIndex: nextIndex,
+                  currentWordId: levelProgress.sessionOrderWordIds[nextIndex] ?? null,
+                  updatedAt: new Date().toISOString(),
+                }
+              : levelProgress;
+          const updatedProgress =
+            updatedLevel === levelProgress
+              ? progress
+              : {
+                  ...progress,
+                  levels: {
+                    ...progress.levels,
+                    [currentWord.level]: updatedLevel,
+                  },
+                };
+
+          if (updatedProgress !== progress) {
+            await progressStorageService.saveProgress(profileId, updatedProgress);
+            setProgress(updatedProgress);
+          }
+
+          const completedWord = currentWord;
+          setIsAnswerLocked(true);
+
+          transitionTimeoutRef.current = setTimeout(() => {
+            transitionTimeoutRef.current = null;
+            setPreviousWord(completedWord);
+            setCurrentIndex(nextIndex);
+            setFeedback({ type: null, message: null });
+            setSubmittedAnswer(null);
+            setSubmittedAnswerSource(null);
+            setIsAnswerLocked(false);
+          }, CORRECT_ANSWER_DELAY_MS);
+
+          return true;
+        }
+
+        const result = applyPracticeAnswer({
+          progress,
+          currentWord,
+          answer: trimmed,
+          currentIndex,
+          mode,
+          selectedLevel,
+        });
+
+        await progressStorageService.saveProgress(profileId, result.progress);
+        setProgress(result.progress);
+        setFeedback(result.feedback);
+        setSubmittedAnswer(trimmed);
+        setSubmittedAnswerSource(source);
+        await learningRecorderService.recordPracticeResult({
+          profileId,
+          module: "words",
+          activityType: "speak",
+          level: currentWord.level,
+          itemId: currentWord.id,
+          prompt: currentWord.azeri,
+          correctAnswer: currentWord.english,
+          userAnswer: trimmed,
+          result: result.correct ? "correct" : "wrong",
+          explanationAz: currentWord.exampleAz,
+          awardXp: result.correct,
+          streakCount: result.progress.levels[currentWord.level].currentStreak,
+        });
+
+        if (!result.correct) {
+          return false;
+        }
+
+        const completedWord = currentWord;
+        setIsAnswerLocked(true);
+
+        transitionTimeoutRef.current = setTimeout(() => {
+          transitionTimeoutRef.current = null;
+          setPreviousWord(completedWord);
+          setCurrentIndex(result.nextIndex);
+          setFeedback({ type: null, message: null });
+          setSubmittedAnswer(null);
+          setSubmittedAnswerSource(null);
+          setIsAnswerLocked(false);
+        }, CORRECT_ANSWER_DELAY_MS);
+
+        return true;
+      } finally {
+        submissionInFlightRef.current = false;
       }
-
-      const completedWord = currentWord;
-      setIsAnswerLocked(true);
-
-      transitionTimeoutRef.current = setTimeout(() => {
-        transitionTimeoutRef.current = null;
-        setPreviousWord(completedWord);
-        setCurrentIndex(result.nextIndex);
-        setFeedback({ type: null, message: null });
-        setSubmittedAnswer(null);
-        setSubmittedAnswerSource(null);
-        setIsAnswerLocked(false);
-      }, CORRECT_ANSWER_DELAY_MS);
-
-      return true;
     },
     [
       clearTransitionTimeout,
@@ -151,6 +244,57 @@ export function useWordsPractice(
       selectedLevel,
     ],
   );
+
+  const goToPreviousItem = useCallback(async () => {
+    if (!profileId || !progress || currentIndex <= 0 || isAnswerLocked || practiceWords.length === 0) {
+      return false;
+    }
+
+    clearTransitionTimeout();
+
+    const nextIndex = currentIndex - 1;
+    const nextWord = practiceWords[nextIndex] ?? null;
+    if (!nextWord) {
+      return false;
+    }
+
+    let updatedProgress = progress;
+    if (mode === "full" && nextWord.level === selectedLevel) {
+      const levelProgress = progress.levels[selectedLevel];
+      updatedProgress = {
+        ...progress,
+        lastSelectedLevel: selectedLevel,
+        levels: {
+          ...progress.levels,
+          [selectedLevel]: {
+            ...levelProgress,
+            currentIndex: nextIndex,
+            currentWordId: nextWord.id,
+            updatedAt: new Date().toISOString(),
+          },
+        },
+      };
+      await progressStorageService.saveProgress(profileId, updatedProgress);
+      setProgress(updatedProgress);
+    }
+
+    setPreviousWord(wordAtIndex(practiceWords, nextIndex - 1));
+    setCurrentIndex(nextIndex);
+    setFeedback({ type: null, message: null });
+    setSubmittedAnswer(null);
+    setSubmittedAnswerSource(null);
+    setIsAnswerLocked(false);
+    return true;
+  }, [
+    clearTransitionTimeout,
+    currentIndex,
+    isAnswerLocked,
+    mode,
+    practiceWords,
+    profileId,
+    progress,
+    selectedLevel,
+  ]);
 
   const toggleFavorite = useCallback(async () => {
     if (!profileId || !progress || !currentWord) {
@@ -168,6 +312,7 @@ export function useWordsPractice(
     }
 
     clearTransitionTimeout();
+    const skippedWord = currentWord;
 
     const nextOrderIds = moveCurrentItemToEnd(
       practiceWords.map((word) => word.id),
@@ -178,13 +323,13 @@ export function useWordsPractice(
     const nextWord = nextWords[nextIndex] ?? null;
 
     if (mode === "full") {
-      const levelProgress = progress.levels[currentWord.level];
+      const levelProgress = progress.levels[skippedWord.level];
       const updatedProgress: UserProgress = {
         ...progress,
         lastSelectedLevel: selectedLevel,
         levels: {
           ...progress.levels,
-          [currentWord.level]: {
+          [skippedWord.level]: {
             ...levelProgress,
             sessionOrderWordIds: nextOrderIds,
             currentIndex: nextIndex,
@@ -199,12 +344,24 @@ export function useWordsPractice(
     }
 
     setPracticeWords(nextWords);
-    setPreviousWord(currentWord);
+    setPreviousWord(skippedWord);
     setCurrentIndex(nextIndex);
     setFeedback({ type: null, message: null });
     setSubmittedAnswer(null);
     setSubmittedAnswerSource(null);
     setIsAnswerLocked(false);
+    await learningRecorderService.recordPracticeResult({
+      profileId,
+      module: "words",
+      activityType: "speak",
+      level: skippedWord.level,
+      itemId: skippedWord.id,
+      prompt: skippedWord.azeri,
+      correctAnswer: skippedWord.english,
+      result: "skipped",
+      explanationAz: skippedWord.exampleAz,
+      awardXp: false,
+    });
     return true;
   }, [
     clearTransitionTimeout,
@@ -254,6 +411,8 @@ export function useWordsPractice(
       reload: preparePractice,
       submitAnswer,
       skipCurrentItem,
+      goToPreviousItem,
+      canGoPrevious: currentIndex > 0 && !isAnswerLocked,
       toggleFavorite,
       restartSelectedLevel,
     }),
@@ -271,6 +430,7 @@ export function useWordsPractice(
       progress,
       restartSelectedLevel,
       selectedLevel,
+      goToPreviousItem,
       skipCurrentItem,
       stats,
       submitAnswer,

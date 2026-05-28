@@ -14,12 +14,16 @@ import { TextInputField } from "../../components/common/TextInputField";
 import { AppScaffold } from "../../components/layout/AppScaffold";
 import { CEFR_LEVELS, DEFAULT_CEFR_LEVEL } from "../../config/levels";
 import { useActiveProfile } from "../../features/profile/hooks/useActiveProfile";
+import { grammarProgressStorageService } from "../../features/grammar/services/grammarProgressStorageService";
 import {
   PROFILE_AVATARS,
   profileStorageService,
 } from "../../features/profile/services/profileStorageService";
 import { useProgress } from "../../features/progress/hooks/useProgress";
 import { progressStorageService } from "../../features/progress/services/progressStorageService";
+import { learningProfileService } from "../../features/learning/services/learningProfileService";
+import { sentenceProgressStorageService } from "../../features/sentences/services/sentenceProgressStorageService";
+import { writingProgressStorageService } from "../../features/writing/services/writingProgressStorageService";
 import type { CEFRLevel } from "../../features/progress/types";
 import { useVoiceSettings } from "../../features/settings/hooks/useVoiceSettings";
 import type { PronunciationSpeed, VoiceAccentPreference } from "../../features/settings/types";
@@ -101,11 +105,19 @@ export default function SettingsScreen() {
   function resetAllProgress() {
     confirm({
       title: "Reset all progress?",
-      message: "This clears all levels, favorites, difficult words, daily goal progress, and streaks for this profile only.",
+      message: "This clears words, sentences, grammar, writing, review, XP, favorites, difficult words, daily goal progress, and streaks for this profile only.",
       confirmLabel: "Reset All",
       variant: "danger",
       onConfirm: () => {
-        void reloadAfter(progressStorageService.resetAll(profile.id));
+        void reloadAfter(
+          Promise.all([
+            progressStorageService.resetAll(profile.id),
+            sentenceProgressStorageService.deleteProgress(profile.id),
+            grammarProgressStorageService.deleteProgress(profile.id),
+            writingProgressStorageService.deleteProgress(profile.id),
+            learningProfileService.deleteProfileLearningData(profile.id),
+          ]),
+        );
       },
     });
   }

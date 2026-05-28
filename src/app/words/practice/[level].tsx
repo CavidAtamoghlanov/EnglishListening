@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Modal, Platform, Pressable, StyleSheet, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Check, Info, Lightbulb, SkipForward, Star, Volume2, X } from "lucide-react-native";
+import { Check, ChevronLeft, Info, Lightbulb, SkipForward, Star, Volume2, X } from "lucide-react-native";
 import { AppText } from "../../../components/common/AppText";
 import { AppButton } from "../../../components/common/AppButton";
 import { useConfirmDialog } from "../../../components/common/ConfirmDialog";
@@ -19,6 +19,7 @@ import { LessonTopBar } from "../../../components/lesson/LessonTopBar";
 import { lessonColors } from "../../../components/lesson/lessonTheme";
 import { getPracticeModeConfig, parsePracticeMode } from "../../../config/reviewModes";
 import { useActiveProfile } from "../../../features/profile/hooks/useActiveProfile";
+import { useContinuousListening } from "../../../features/speech/hooks/useContinuousListening";
 import { useSpeechRecognition } from "../../../features/speech/hooks/useSpeechRecognition";
 import { useTextToSpeech } from "../../../features/speech/hooks/useTextToSpeech";
 import { useTapOrDoubleTap } from "../../../features/words/hooks/useTapOrDoubleTap";
@@ -38,6 +39,7 @@ export default function PracticeScreen() {
   const [showHint, setShowHint] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const feedbackScale = useMemo(() => new Animated.Value(1), []);
+  const lastFinalSpeechKeyRef = useRef<string | null>(null);
   const inputsDisabled = practice.isAnswerLocked;
 
   useEffect(() => {
@@ -51,6 +53,7 @@ export default function PracticeScreen() {
     setRecognizedText("");
     setShowHint(false);
     setShowDetails(false);
+    lastFinalSpeechKeyRef.current = null;
   }, [practice.currentWord?.id, practice.currentIndex]);
 
   const contextualStrings = useMemo(
@@ -69,6 +72,11 @@ export default function PracticeScreen() {
 
       setRecognizedText(transcript);
       if (isFinal && transcript.trim()) {
+        const finalKey = `${practice.currentWord?.id ?? "none"}:${practice.currentIndex}:${transcript.trim().toLowerCase()}`;
+        if (lastFinalSpeechKeyRef.current === finalKey) {
+          return;
+        }
+        lastFinalSpeechKeyRef.current = finalKey;
         void practice.submitAnswer(transcript, "speech");
       }
     },
@@ -78,6 +86,11 @@ export default function PracticeScreen() {
   const speech = useSpeechRecognition({
     contextualStrings,
     onResult: handleSpeechResult,
+  });
+  const continuousListening = useContinuousListening({
+    speech,
+    canListen: !inputsDisabled,
+    hasActiveItem: Boolean(practice.currentWord),
   });
 
   useEffect(() => {
@@ -104,11 +117,24 @@ export default function PracticeScreen() {
       return;
     }
 
+    speech.stop();
     setManualAnswer("");
     setRecognizedText("");
     setShowHint(false);
     void practice.skipCurrentItem();
-  }, [inputsDisabled, practice]);
+  }, [inputsDisabled, practice, speech]);
+
+  const handlePrevious = useCallback(() => {
+    if (inputsDisabled || !practice.canGoPrevious) {
+      return;
+    }
+
+    speech.stop();
+    setManualAnswer("");
+    setRecognizedText("");
+    setShowHint(false);
+    void practice.goToPreviousItem();
+  }, [inputsDisabled, practice, speech]);
 
   if (!activeProfile || practice.isLoading) {
     return null;
@@ -200,7 +226,6 @@ export default function PracticeScreen() {
     <>
       <LessonShell
         sectionTitle="Növbəti söz"
-        primaryNavLabel="Söz"
         topBar={
           <LessonTopBar
             progressPercent={percent}
@@ -265,6 +290,12 @@ export default function PracticeScreen() {
         <LessonActionDock
           actions={[
             {
+              label: "Previous",
+              icon: ChevronLeft,
+              onPress: handlePrevious,
+              disabled: !practice.canGoPrevious,
+            },
+            {
               label: "Hint",
               icon: Lightbulb,
               onPress: () => setShowHint((value) => !value),
@@ -281,9 +312,10 @@ export default function PracticeScreen() {
               onPress: handleSkip,
             },
           ]}
-          onMicPress={() => void speech.start()}
-          isListening={speech.isListening}
-          disabled={inputsDisabled}
+          onMicPress={continuousListening.toggleContinuousListening}
+          isListening={continuousListening.isMicActive}
+          actionsDisabled={inputsDisabled}
+          micDisabled={speech.manualFallbackRecommended}
         />
 
         {feedbackTone === "neutral" || speech.manualFallbackRecommended ? (
@@ -294,7 +326,9 @@ export default function PracticeScreen() {
             tone={feedbackTone}
             hint={
               speech.isListening
-                ? "Listening..."
+                ? "Danışın..."
+                : continuousListening.isContinuousListening
+                  ? "Listening stays on for the next item."
                 : "Mic işlət, ipucu aç, ya da yazaraq cavabla."
             }
             error={

@@ -38,10 +38,14 @@
     "typecheck": "tsc --noEmit",
     "validate:words": "tsx scripts/validateWords.ts",
     "validate:words:strict": "tsx scripts/validateWords.ts --strict",
+    "validate:grammar": "tsx scripts/validateGrammar.ts",
+    "validate:writing": "tsx scripts/validateWriting.ts",
+    "validate:learning": "tsx scripts/validateLearning.ts",
     "stats:words": "tsx scripts/wordStats.ts",
     "build:words": "tsx scripts/buildWordBank.ts",
     "generate:sentences": "tsx scripts/generateSentences.ts",
     "validate:sentences": "tsx scripts/validateSentences.ts",
+    "validate:sentences:strict": "tsx scripts/validateSentences.ts --strict",
     "export:web": "expo export --platform web"
   },
   "private": true

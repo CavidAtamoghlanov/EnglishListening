@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Platform } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Languages, SkipForward, Volume2 } from "lucide-react-native";
+import { ChevronLeft, Languages, SkipForward, Volume2 } from "lucide-react-native";
 import { AppButton } from "../../../../components/common/AppButton";
 import { useConfirmDialog } from "../../../../components/common/ConfirmDialog";
 import { EmptyState } from "../../../../components/common/EmptyState";
@@ -19,6 +19,7 @@ import { getSentenceModeConfig, parseSentenceModeParam } from "../../../../featu
 import { isSentenceLevel } from "../../../../features/sentences/config/levels";
 import { SentenceWordChips } from "../../../../features/sentences/components/SentenceWordChips";
 import { useActiveProfile } from "../../../../features/profile/hooks/useActiveProfile";
+import { useContinuousListening } from "../../../../features/speech/hooks/useContinuousListening";
 import { useSpeechRecognition } from "../../../../features/speech/hooks/useSpeechRecognition";
 import { useTextToSpeech } from "../../../../features/speech/hooks/useTextToSpeech";
 import { useSentencePractice } from "../../../../features/sentences/hooks/useSentencePractice";
@@ -38,6 +39,7 @@ export default function SentencePracticeScreen() {
   const [recognizedText, setRecognizedText] = useState("");
   const [showFullTranslation, setShowFullTranslation] = useState(false);
   const feedbackScale = useMemo(() => new Animated.Value(1), []);
+  const lastFinalSpeechKeyRef = useRef<string | null>(null);
   const inputsDisabled = practice.isAnswerLocked;
 
   useEffect(() => {
@@ -54,6 +56,7 @@ export default function SentencePracticeScreen() {
     setManualAnswer("");
     setRecognizedText("");
     setShowFullTranslation(false);
+    lastFinalSpeechKeyRef.current = null;
   }, [practice.currentSentence?.id, practice.currentIndex]);
 
   const contextualStrings = useMemo(
@@ -71,6 +74,11 @@ export default function SentencePracticeScreen() {
       }
       setRecognizedText(transcript);
       if (isFinal && transcript.trim()) {
+        const finalKey = `${practice.currentSentence?.id ?? "none"}:${practice.currentIndex}:${transcript.trim().toLowerCase()}`;
+        if (lastFinalSpeechKeyRef.current === finalKey) {
+          return;
+        }
+        lastFinalSpeechKeyRef.current = finalKey;
         void practice.submitAnswer(transcript, "speech");
       }
     },
@@ -80,6 +88,11 @@ export default function SentencePracticeScreen() {
   const speech = useSpeechRecognition({
     contextualStrings,
     onResult: handleSpeechResult,
+  });
+  const continuousListening = useContinuousListening({
+    speech,
+    canListen: !inputsDisabled,
+    hasActiveItem: Boolean(practice.currentSentence),
   });
 
   useEffect(() => {
@@ -100,11 +113,24 @@ export default function SentencePracticeScreen() {
       return;
     }
 
+    speech.stop();
     setManualAnswer("");
     setRecognizedText("");
     setShowFullTranslation(false);
     void practice.skipCurrentSentence();
-  }, [inputsDisabled, practice]);
+  }, [inputsDisabled, practice, speech]);
+
+  const handlePrevious = useCallback(() => {
+    if (inputsDisabled || !practice.canGoPrevious) {
+      return;
+    }
+
+    speech.stop();
+    setManualAnswer("");
+    setRecognizedText("");
+    setShowFullTranslation(false);
+    void practice.goToPreviousSentence();
+  }, [inputsDisabled, practice, speech]);
 
   if (!activeProfile || !mode || !level || !modeConfig || practice.isLoading) {
     return null;
@@ -198,7 +224,6 @@ export default function SentencePracticeScreen() {
   return (
     <LessonShell
       sectionTitle="Növbəti cümlə"
-      primaryNavLabel="Cümlə"
       topBar={
         <LessonTopBar
           progressPercent={percent}
@@ -253,6 +278,12 @@ export default function SentencePracticeScreen() {
       <LessonActionDock
         actions={[
           {
+            label: "Previous",
+            icon: ChevronLeft,
+            onPress: handlePrevious,
+            disabled: !practice.canGoPrevious,
+          },
+          {
             label: isRepeat
               ? showFullTranslation
                 ? "Hide"
@@ -275,9 +306,10 @@ export default function SentencePracticeScreen() {
             onPress: handleSkip,
           },
         ]}
-        onMicPress={() => void speech.start()}
-        isListening={speech.isListening}
-        disabled={inputsDisabled}
+        onMicPress={continuousListening.toggleContinuousListening}
+        isListening={continuousListening.isMicActive}
+        actionsDisabled={inputsDisabled}
+        micDisabled={speech.manualFallbackRecommended}
       />
 
       {feedbackTone === "neutral" || speech.manualFallbackRecommended ? (
@@ -288,7 +320,9 @@ export default function SentencePracticeScreen() {
           tone={feedbackTone}
           hint={
             speech.isListening
-              ? "Listening..."
+              ? "Danışın..."
+              : continuousListening.isContinuousListening
+                ? "Listening stays on for the next item."
               : "Mic işlət, kömək aç, ya da yazaraq cavabla."
           }
           error={

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Platform } from "react-native";
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from "expo-speech-recognition";
 import {
@@ -16,6 +16,8 @@ type UseSpeechRecognitionOptions = {
 
 export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) {
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
+  const optionsRef = useRef(options);
+  const isListeningRef = useRef(false);
   const [state, setState] = useState<SpeechRecognitionState>({
     isAvailable: speechRecognitionService.isNativeRecognitionAvailable(),
     isListening: false,
@@ -24,15 +26,25 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
     permissionDenied: false,
   });
 
+  useEffect(() => {
+    optionsRef.current = options;
+  }, [options]);
+
+  const updateListening = useCallback((isListening: boolean) => {
+    isListeningRef.current = isListening;
+    setState((current) => ({ ...current, isListening }));
+  }, []);
+
   useSpeechRecognitionEvent("start", () => {
     if (Platform.OS !== "web") {
+      isListeningRef.current = true;
       setState((current) => ({ ...current, isListening: true, error: null }));
     }
   });
 
   useSpeechRecognitionEvent("end", () => {
     if (Platform.OS !== "web") {
-      setState((current) => ({ ...current, isListening: false }));
+      updateListening(false);
     }
   });
 
@@ -40,12 +52,13 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
     if (Platform.OS !== "web") {
       const transcript = event.results[0]?.transcript ?? "";
       setState((current) => ({ ...current, transcript }));
-      options.onResult?.(transcript, event.isFinal);
+      optionsRef.current.onResult?.(transcript, event.isFinal);
     }
   });
 
   useSpeechRecognitionEvent("error", (event) => {
     if (Platform.OS !== "web") {
+      isListeningRef.current = false;
       setState((current) => ({
         ...current,
         isListening: false,
@@ -56,6 +69,10 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
   });
 
   const start = useCallback(async () => {
+    if (isListeningRef.current) {
+      return;
+    }
+
     setState((current) => ({ ...current, transcript: "", error: null }));
 
     if (Platform.OS === "web") {
@@ -76,12 +93,14 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
       recognition.maxAlternatives = 1;
 
       recognition.onstart = () => {
+        isListeningRef.current = true;
         setState((current) => ({ ...current, isListening: true, error: null }));
       };
       recognition.onend = () => {
-        setState((current) => ({ ...current, isListening: false }));
+        updateListening(false);
       };
       recognition.onerror = (event: BrowserSpeechRecognitionErrorEvent) => {
+        isListeningRef.current = false;
         setState((current) => ({
           ...current,
           isListening: false,
@@ -93,11 +112,20 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
         const result = event.results[event.results.length - 1];
         const transcript = result?.[0]?.transcript ?? "";
         setState((current) => ({ ...current, transcript }));
-        options.onResult?.(transcript, result?.isFinal ?? false);
+        optionsRef.current.onResult?.(transcript, result?.isFinal ?? false);
       };
 
       recognitionRef.current = recognition;
-      recognition.start();
+      try {
+        recognition.start();
+      } catch (error) {
+        isListeningRef.current = false;
+        setState((current) => ({
+          ...current,
+          isListening: false,
+          error: error instanceof Error ? error.message : "Could not start speech recognition.",
+        }));
+      }
       return;
     }
 
@@ -120,12 +148,14 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
       return;
     }
 
-    speechRecognitionService.startNativeRecognition(options.contextualStrings ?? []);
-  }, [options]);
+    speechRecognitionService.startNativeRecognition(optionsRef.current.contextualStrings ?? []);
+  }, [updateListening]);
 
   const stop = useCallback(() => {
+    isListeningRef.current = false;
     if (Platform.OS === "web") {
       recognitionRef.current?.stop();
+      setState((current) => ({ ...current, isListening: false }));
       return;
     }
     ExpoSpeechRecognitionModule.stop();

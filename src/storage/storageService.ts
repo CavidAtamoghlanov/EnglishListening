@@ -6,6 +6,12 @@ export const storageKeys = {
   profiles: `${keyPrefix}:profiles`,
   progress: (profileId: string) => `${keyPrefix}:progress:${profileId}`,
   sentenceProgress: (profileId: string) => `${keyPrefix}:sentence-progress:${profileId}`,
+  grammarProgress: (profileId: string) => `${keyPrefix}:grammar-progress:${profileId}`,
+  writingProgress: (profileId: string) => `${keyPrefix}:writing-progress:${profileId}`,
+  learningEvents: (profileId: string) => `${keyPrefix}:learning-events:${profileId}`,
+  reviewQueue: (profileId: string) => `${keyPrefix}:review-queue:${profileId}`,
+  xp: (profileId: string) => `${keyPrefix}:xp:${profileId}`,
+  dailyPath: (profileId: string) => `${keyPrefix}:daily-path:${profileId}`,
   settings: (profileId: string) => `${keyPrefix}:settings:${profileId}`,
 };
 

@@ -1,7 +1,7 @@
 import type { ComponentType } from "react";
 import { useEffect, useMemo } from "react";
 import { Animated, Platform, Pressable, StyleSheet, View } from "react-native";
-import { Mic } from "lucide-react-native";
+import { Mic, Square } from "lucide-react-native";
 import type { LucideProps } from "lucide-react-native";
 import { AppText } from "../common/AppText";
 import { lessonColors, lessonShadow } from "./lessonTheme";
@@ -11,6 +11,7 @@ export type LessonAction = {
   icon: ComponentType<LucideProps>;
   onPress: () => void;
   active?: boolean;
+  disabled?: boolean;
 };
 
 type LessonActionDockProps = {
@@ -18,6 +19,8 @@ type LessonActionDockProps = {
   onMicPress: () => void;
   isListening?: boolean;
   disabled?: boolean;
+  actionsDisabled?: boolean;
+  micDisabled?: boolean;
 };
 
 export function LessonActionDock({
@@ -25,7 +28,11 @@ export function LessonActionDock({
   onMicPress,
   isListening = false,
   disabled = false,
+  actionsDisabled,
+  micDisabled,
 }: LessonActionDockProps) {
+  const resolvedActionsDisabled = actionsDisabled ?? disabled;
+  const resolvedMicDisabled = micDisabled ?? disabled;
   const pulse = useMemo(() => new Animated.Value(0), []);
 
   useEffect(() => {
@@ -70,31 +77,37 @@ export function LessonActionDock({
       },
     ],
   };
+  const MicIcon = isListening ? Square : Mic;
+  const micColor = isListening ? lessonColors.red : lessonColors.yellowButton;
 
   return (
     <View style={styles.wrap}>
       <View style={styles.sideActions}>
         {leftActions.map((action) => (
-          <ActionButton key={action.label} action={action} disabled={disabled} />
+          <ActionButton key={action.label} action={action} disabled={resolvedActionsDisabled} />
         ))}
       </View>
 
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Start listening"
+        accessibilityLabel={isListening ? "Stop listening" : "Start listening"}
         onPress={onMicPress}
-        disabled={disabled}
-        style={({ pressed }) => [styles.micWrap, pressed && !disabled && styles.pressed, disabled && styles.disabled]}
+        disabled={resolvedMicDisabled}
+        style={({ pressed }) => [
+          styles.micWrap,
+          pressed && !resolvedMicDisabled && styles.pressed,
+          resolvedMicDisabled && styles.disabled,
+        ]}
       >
-        <Animated.View style={[styles.micPulse, pulseStyle]} />
-        <View style={[styles.micButton, lessonShadow]}>
-          <Mic color={lessonColors.background} size={32} strokeWidth={2.8} />
+        <Animated.View style={[styles.micPulse, { backgroundColor: micColor }, pulseStyle]} />
+        <View style={[styles.micButton, { backgroundColor: micColor }, lessonShadow]}>
+          <MicIcon color={isListening ? lessonColors.text : lessonColors.background} size={isListening ? 26 : 32} strokeWidth={2.8} />
         </View>
       </Pressable>
 
       <View style={styles.sideActions}>
         {rightActions.map((action) => (
-          <ActionButton key={action.label} action={action} disabled={disabled} />
+          <ActionButton key={action.label} action={action} disabled={resolvedActionsDisabled} />
         ))}
       </View>
     </View>
@@ -103,17 +116,18 @@ export function LessonActionDock({
 
 function ActionButton({ action, disabled }: { action: LessonAction; disabled: boolean }) {
   const Icon = action.icon;
+  const actionDisabled = disabled || Boolean(action.disabled);
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={action.label}
       onPress={action.onPress}
-      disabled={disabled}
+      disabled={actionDisabled}
       style={({ pressed }) => [
         styles.action,
         action.active && styles.actionActive,
-        pressed && !disabled && styles.pressed,
-        disabled && styles.disabled,
+        pressed && !actionDisabled && styles.pressed,
+        actionDisabled && styles.disabled,
       ]}
     >
       <Icon
