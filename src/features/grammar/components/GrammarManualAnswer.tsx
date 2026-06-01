@@ -29,6 +29,7 @@ export function GrammarManualAnswer({
         autoCapitalize="sentences"
         editable={!disabled}
         returnKeyType="done"
+        blurOnSubmit={false}
         onSubmitEditing={onSubmit}
         style={styles.input}
       />

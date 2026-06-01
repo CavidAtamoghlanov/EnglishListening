@@ -17,6 +17,8 @@ The app targets Android, iOS, and Web. The web export is ready for Vercel, Andro
 - Daily goal, practice streak, level stats, and automatic local progress saving.
 - Shared learning system with learning events, Mistake Review, spaced repetition, XP, daily learning path, and progress dashboard.
 - Grammar Practice and Writing Practice use typing-only flows with profile-scoped progress.
+- Email/password account foundation with API-backed JSON cloud sync.
+- Manual Sync Now for logged-in users while local-first practice remains available offline.
 - Settings for profile details, daily goal, voice settings, and destructive progress/profile actions.
 
 ## Local Multi-Profile Storage
@@ -36,6 +38,8 @@ english-practice:learning-events:{profileId}
 english-practice:review-queue:{profileId}
 english-practice:xp:{profileId}
 english-practice:daily-path:{profileId}
+english-practice:auth-session
+english-practice:auth-offline-mode
 ```
 
 Names can repeat, but IDs are unique. Deleting a profile removes only that profile and only that profile's progress/settings. Other profiles are not affected.
@@ -61,6 +65,9 @@ src/
   features/grammar/         Typing-only grammar practice
   features/writing/         Typing-only writing practice
   features/learning/        Learning events, SRS review, XP, daily path, dashboard helpers
+  features/auth/            Auth session, login/register client, server auth helpers
+  features/sync/            JSON sync types, local snapshot, cloud sync services
+api/                        Vercel API routes for auth, sync, and admin users
   storage/                  AsyncStorage wrapper and storage keys
   theme/                    Colors, spacing, typography, shadows
   utils/                    ID, date, and confirmation helpers
@@ -71,7 +78,31 @@ scripts/
   validateGrammar.ts        Grammar exercise validation
   validateWriting.ts        Writing item validation
   validateLearning.ts       Learning module registry validation
+  validateUsersJson.ts      Local mock users JSON validation
 ```
+
+## Auth And Sync
+
+The app now supports a sync-enabled account foundation:
+
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `GET /api/sync/pull`
+- `POST /api/sync/push`
+- `GET /api/admin/users`
+- `GET /api/admin/users/:userId`
+
+Static frontend JSON is not used as a database. Server-side API routes write JSON documents through a storage adapter. See `AUTH_SYNC_PLAN.md` and `JSON_DATABASE.md`.
+
+Required production environment variables:
+
+```text
+BLOB_READ_WRITE_TOKEN
+AUTH_TOKEN_SECRET
+ADMIN_TOKEN
+```
+
+For local API testing without Blob, run through Vercel functions with `ENABLE_LOCAL_MOCK_SYNC=true`. The local mock writes to `.local-cloud-json/` and does not sync across devices.
 
 ## Installed Packages
 
@@ -143,11 +174,12 @@ npm run validate:sentences:strict
 npm run validate:grammar
 npm run validate:writing
 npm run validate:learning
+npm run validate:users
 ```
 
 - `validate:sentences` validates schema and reports counts.
 - `validate:sentences:strict` enforces the 5000-item target per sentence mode/level.
-- Current known data gap: `src/data/sentences/translate/b1.json` has 10 items while the strict target is 5000.
+- Current check: all sentence files report 5000 / 5000.
 - `validate:learning` checks the learning module registry and route duplicates.
 
 See `LEARNING_SYSTEM.md`, `MODULES.md`, and `DATA_LOADING.md` for the learning layer and safe performance plan.

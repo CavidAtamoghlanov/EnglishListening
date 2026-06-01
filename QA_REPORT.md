@@ -6,12 +6,13 @@ Results from this checkpoint:
 
 - `npm run typecheck`: passed
 - `npm run validate:words`: passed with existing cross-level duplicate warnings
-- `npm run validate:sentences`: passed schema validation and reported the known `translate/B1` count warning
-- `npm run validate:sentences:strict`: failed as expected on the known `translate/B1` count gap
+- `npm run validate:sentences`: passed schema validation with all files at target count
+- `npm run validate:sentences:strict`: passed
 - `npm run validate:grammar`: passed
 - `npm run validate:writing`: passed
 - `npm run validate:learning`: passed
-- `npx expo export -p web`: passed; exported one web JS bundle at about 24 MB. Expo printed "Something prevented Expo from exiting" after export, then exited with code 0.
+- `npm run validate:users`: passed
+- `npx expo export -p web`: passed; exported one web JS bundle at about 25 MB.
 
 ## Sentence Validation Gap
 
@@ -23,7 +24,7 @@ Current validator output:
 - `repeat/B2`: 5000 / 5000
 - `translate/A1`: 5000 / 5000
 - `translate/A2`: 5000 / 5000
-- `translate/B1`: 10 / 5000
+- `translate/B1`: 5000 / 5000
 - `translate/B2`: 5000 / 5000
 
 Normal sentence validation is now schema-first and does not fail the build for incomplete target counts. Strict validation is available for release/data-completeness gates:
@@ -32,7 +33,7 @@ Normal sentence validation is now schema-first and does not fail the build for i
 npm run validate:sentences:strict
 ```
 
-Strict mode currently fails only because `translate/B1` has 10 / 5000 items.
+Strict mode currently passes because all sentence files report 5000 / 5000.
 
 ## Stability Fixes In This Continuation
 
@@ -50,6 +51,8 @@ Strict mode currently fails only because `translate/B1` has 10 / 5000 items.
 - Home shows XP, Today's Plan, and Mistake Review: checked in browser.
 - Home shows Sentence Practice once and mobile bottom nav uses Review: checked in browser.
 - Statistics shows XP, daily path, review due count, module tabs, and module breakdown: checked in browser.
+- Auth startup redirects to Login when no session/offline mode is set: checked in browser.
+- Continue offline returns to the existing local profile picker and Home: checked in browser.
 - Writing wrong answer creates a due review item: checked in browser.
 - Mistake Review lists the prompt, last answer, correct answer, and explanation: checked in browser.
 - Correct review answer moves the item out of the due queue: checked in browser.

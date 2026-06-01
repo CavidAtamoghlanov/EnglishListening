@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { RotateCcw, Save, ShieldAlert, Target, Trash2, UserRound, Volume2 } from "lucide-react-native";
+import { Cloud, LogOut, RotateCcw, Save, ShieldAlert, Target, Trash2, UserRound, Volume2 } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { AppText } from "../../components/common/AppText";
 import { AppButton } from "../../components/common/AppButton";
@@ -13,6 +13,7 @@ import { SegmentedControl } from "../../components/common/SegmentedControl";
 import { TextInputField } from "../../components/common/TextInputField";
 import { AppScaffold } from "../../components/layout/AppScaffold";
 import { CEFR_LEVELS, DEFAULT_CEFR_LEVEL } from "../../config/levels";
+import { useAuth } from "../../features/auth/hooks/useAuth";
 import { useActiveProfile } from "../../features/profile/hooks/useActiveProfile";
 import { grammarProgressStorageService } from "../../features/grammar/services/grammarProgressStorageService";
 import {
@@ -24,7 +25,10 @@ import { progressStorageService } from "../../features/progress/services/progres
 import { learningProfileService } from "../../features/learning/services/learningProfileService";
 import { sentenceProgressStorageService } from "../../features/sentences/services/sentenceProgressStorageService";
 import { writingProgressStorageService } from "../../features/writing/services/writingProgressStorageService";
+import { syncQueueService } from "../../features/sync/services/syncQueueService";
+import type { SyncStatus } from "../../features/sync/types";
 import type { CEFRLevel } from "../../features/progress/types";
+import { MicrophoneTestPanel } from "../../features/speech/components/MicrophoneTestPanel";
 import { useVoiceSettings } from "../../features/settings/hooks/useVoiceSettings";
 import type { PronunciationSpeed, VoiceAccentPreference } from "../../features/settings/types";
 import { colors } from "../../theme/colors";
@@ -32,12 +36,15 @@ import { spacing } from "../../theme/spacing";
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const auth = useAuth();
   const { activeProfile, setActiveProfile, clearActiveProfile } = useActiveProfile();
   const { progress, saveProgress, reload } = useProgress(activeProfile?.id);
   const { settings, updateSettings } = useVoiceSettings(activeProfile?.id);
   const { confirm, dialog } = useConfirmDialog();
   const [name, setName] = useState(activeProfile?.name ?? "");
   const [resetLevel, setResetLevel] = useState<CEFRLevel>(DEFAULT_CEFR_LEVEL);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!activeProfile) {
@@ -143,6 +150,19 @@ export default function SettingsScreen() {
     });
   }
 
+  async function syncNow() {
+    setSyncStatus("syncing");
+    const result = await syncQueueService.pushNow(profile.id);
+    setSyncStatus(result.status);
+    setSyncMessage(result.message);
+  }
+
+  async function logout() {
+    await auth.logout();
+    clearActiveProfile();
+    router.replace("/auth/login");
+  }
+
   return (
     <AppScaffold maxWidth={1020}>
       {dialog}
@@ -170,6 +190,41 @@ export default function SettingsScreen() {
         <AppButton icon={Save} onPress={() => void saveProfileChanges()} size="lg">
           Save Profile
         </AppButton>
+      </AppCard>
+
+      <AppCard tone="violet" padding="lg">
+        <View style={styles.sectionHeader}>
+          <IconBubble icon={Cloud} backgroundColor={colors.surfaceAlt} color={colors.secondary} />
+          <View style={styles.sectionCopy}>
+            <AppText variant="h2">Account & Sync</AppText>
+            {auth.session ? (
+              <AppText color={colors.muted}>
+                Logged in as {auth.session.user.username} ({auth.session.user.email})
+              </AppText>
+            ) : (
+              <AppText color={colors.muted}>
+                Offline mode. Local progress is saved only on this device.
+              </AppText>
+            )}
+          </View>
+        </View>
+        {syncMessage ? (
+          <AppText color={syncStatus === "error" ? colors.danger : colors.success}>{syncMessage}</AppText>
+        ) : null}
+        <View style={styles.actions}>
+          <AppButton icon={Cloud} disabled={!auth.session || syncStatus === "syncing"} onPress={() => void syncNow()}>
+            {syncStatus === "syncing" ? "Syncing..." : "Sync Now"}
+          </AppButton>
+          {auth.session ? (
+            <AppButton variant="secondary" icon={LogOut} onPress={() => void logout()}>
+              Log Out
+            </AppButton>
+          ) : (
+            <AppButton variant="secondary" onPress={() => router.push("/auth/login")}>
+              Log In
+            </AppButton>
+          )}
+        </View>
       </AppCard>
 
       <AppCard tone="green" padding="lg">
@@ -231,6 +286,8 @@ export default function SettingsScreen() {
           />
         </View>
       </AppCard>
+
+      <MicrophoneTestPanel />
 
       <AppCard tone="yellow" padding="lg">
         <View style={styles.sectionHeader}>

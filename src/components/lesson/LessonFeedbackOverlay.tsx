@@ -12,6 +12,9 @@ type LessonFeedbackOverlayProps = {
   message: string | null;
   hint: string;
   error?: string | null;
+  scorePercent?: number;
+  expectedAnswer?: string;
+  missingWords?: string[];
   scale?: Animated.Value;
 };
 
@@ -22,6 +25,9 @@ export function LessonFeedbackOverlay({
   message,
   hint,
   error,
+  scorePercent,
+  expectedAnswer,
+  missingWords,
   scale,
 }: LessonFeedbackOverlayProps) {
   const isCorrect = tone === "correct";
@@ -60,6 +66,21 @@ export function LessonFeedbackOverlay({
             ]}
           >
             {message}
+          </AppText>
+        ) : null}
+        {typeof scorePercent === "number" ? (
+          <AppText variant="small" style={styles.score}>
+            Speech score: {scorePercent}%
+          </AppText>
+        ) : null}
+        {expectedAnswer ? (
+          <AppText variant="small" style={styles.expected} numberOfLines={2}>
+            Expected: {expectedAnswer}
+          </AppText>
+        ) : null}
+        {missingWords?.length ? (
+          <AppText variant="small" style={styles.missing} numberOfLines={2}>
+            Missing: {missingWords.slice(0, 5).join(", ")}
           </AppText>
         ) : null}
         {error ? (
@@ -136,6 +157,19 @@ const styles = StyleSheet.create({
   },
   error: {
     color: lessonColors.red,
+    textAlign: "center",
+  },
+  score: {
+    color: lessonColors.muted,
+    textAlign: "center",
+    fontWeight: "800",
+  },
+  expected: {
+    color: lessonColors.text,
+    textAlign: "center",
+  },
+  missing: {
+    color: lessonColors.muted,
     textAlign: "center",
   },
 });

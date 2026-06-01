@@ -183,7 +183,14 @@ export function LessonCard({
           onLongPress={onLongPress}
           style={({ pressed }) => [styles.promptArea, pressed && onPress && styles.promptPressed]}
         >
-          <AppText style={[styles.prompt, !isMobile && styles.promptWide]}>{prompt}</AppText>
+          <AppText
+            style={[styles.prompt, !isMobile && styles.promptWide]}
+            numberOfLines={isMobile ? 4 : 5}
+            adjustsFontSizeToFit
+            minimumFontScale={0.72}
+          >
+            {prompt}
+          </AppText>
         </Pressable>
 
         {children}
@@ -241,18 +248,19 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   card: {
-    width: "92%",
+    width: "100%",
     maxWidth: 620,
     justifyContent: "space-between",
-    gap: 12,
-    paddingHorizontal: 18,
-    paddingVertical: 18,
-    borderWidth: 4,
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderWidth: 3,
     borderRadius: 34,
     backgroundColor: lessonColors.card,
   },
   cardMobile: {
-    minHeight: 286,
+    minHeight: 192,
+    borderRadius: 28,
   },
   cardWide: {
     width: "100%",
@@ -262,16 +270,16 @@ const styles = StyleSheet.create({
     borderRadius: 38,
   },
   topRow: {
-    minHeight: 48,
+    minHeight: 40,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 10,
   },
   iconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(255,255,255,0.06)",
@@ -280,8 +288,8 @@ const styles = StyleSheet.create({
   },
   iconText: {
     color: lessonColors.text,
-    fontSize: 24,
-    lineHeight: 30,
+    fontSize: 21,
+    lineHeight: 26,
   },
   eyebrow: {
     flex: 1,
@@ -292,12 +300,12 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
   topRight: {
-    width: 48,
+    width: 44,
     alignItems: "flex-end",
   },
   promptArea: {
     flex: 1,
-    minHeight: 86,
+    minHeight: 58,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -307,8 +315,8 @@ const styles = StyleSheet.create({
   prompt: {
     color: lessonColors.yellowButton,
     textAlign: "center",
-    fontSize: 34,
-    lineHeight: 42,
+    fontSize: 28,
+    lineHeight: 35,
     fontWeight: "900",
   },
   promptWide: {

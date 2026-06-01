@@ -24,6 +24,10 @@ import { wordsDataService } from "./wordsDataService";
 export type PracticeFeedback = {
   type: "correct" | "wrong" | null;
   message: string | null;
+  scorePercent?: number;
+  expectedAnswer?: string;
+  missingWords?: string[];
+  closeEnough?: boolean;
 };
 
 export type PreparedPracticeSession = {
@@ -135,6 +139,8 @@ export function applyPracticeAnswer({
   currentIndex,
   mode,
   selectedLevel,
+  answerCorrectOverride,
+  feedbackOverride,
 }: {
   progress: UserProgress;
   currentWord: WordItem;
@@ -142,8 +148,10 @@ export function applyPracticeAnswer({
   currentIndex: number;
   mode: PracticeMode;
   selectedLevel: CEFRLevel;
+  answerCorrectOverride?: boolean;
+  feedbackOverride?: PracticeFeedback;
 }): AnswerResult {
-  const correct = isAnswerCorrect(currentWord, answer);
+  const correct = answerCorrectOverride ?? isAnswerCorrect(currentWord, answer);
   const wordLevel = currentWord.level;
   const levelProgress = progress.levels[wordLevel] ?? createEmptyLevelProgress(wordLevel);
   const nextRepeatedWrong = { ...levelProgress.repeatedWrongByWordId };
@@ -197,7 +205,7 @@ export function applyPracticeAnswer({
       progress: updatedProgress,
       correct,
       nextIndex,
-      feedback: { type: "correct", message: "Good!" },
+      feedback: feedbackOverride ?? { type: "correct", message: "Good!" },
     };
   }
 
@@ -219,7 +227,7 @@ export function applyPracticeAnswer({
     progress: updatedProgress,
     correct,
     nextIndex,
-    feedback: { type: "wrong", message: "Try again. You are close." },
+    feedback: feedbackOverride ?? { type: "wrong", message: "Try again. You are close." },
   };
 }
 

@@ -16,6 +16,7 @@ import { useTextToSpeech } from "../../features/speech/hooks/useTextToSpeech";
 import { colors } from "../../theme/colors";
 import { radii } from "../../theme/radii";
 import { spacing } from "../../theme/spacing";
+import { useResponsive } from "../../utils/useResponsive";
 
 function parseFilter(value: string | string[] | undefined): ReviewQueueFilter {
   const raw = Array.isArray(value) ? value[0] : value;
@@ -42,6 +43,7 @@ export default function ReviewPracticeScreen() {
   const params = useLocalSearchParams<{ filter?: string }>();
   const filter = parseFilter(params.filter);
   const { activeProfile } = useActiveProfile();
+  const { isMobile } = useResponsive();
   const { items, reload } = useReviewQueue(activeProfile?.id, filter);
   const { reload: reloadLearningSummary } = useLearningSummary(activeProfile?.id);
   const { speak } = useTextToSpeech(activeProfile?.id);
@@ -180,11 +182,12 @@ export default function ReviewPracticeScreen() {
         <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
       </View>
 
-      <View style={styles.layout}>
-        <View style={styles.mainColumn}>
+      <View style={[styles.layout, isMobile && styles.layoutMobile]}>
+        <View style={[styles.mainColumn, isMobile && styles.mainColumnMobile]}>
           <View
             style={[
               styles.practiceCard,
+              isMobile && styles.practiceCardMobile,
               feedback === "correct" && styles.practiceCardCorrect,
               feedback === "wrong" && styles.practiceCardWrong,
             ]}
@@ -192,7 +195,13 @@ export default function ReviewPracticeScreen() {
             <AppText variant="small" color={colors.primary}>
               {currentItem.sourceModule} · {currentItem.level}
             </AppText>
-            <AppText variant="h1" style={styles.prompt}>
+            <AppText
+              variant={isMobile ? "h2" : "h1"}
+              style={[styles.prompt, isMobile && styles.promptMobile]}
+              numberOfLines={isMobile ? 4 : 6}
+              adjustsFontSizeToFit
+              minimumFontScale={0.74}
+            >
               {currentItem.prompt}
             </AppText>
             {showHint ? (
@@ -216,6 +225,36 @@ export default function ReviewPracticeScreen() {
                 <AppText color={colors.textSoft}>{statusCopy.message}</AppText>
               </View>
             ) : null}
+          </View>
+
+          <View style={styles.answerPanel}>
+            <TextInput
+              accessibilityLabel="Review answer"
+              value={answer}
+              onChangeText={setAnswer}
+              placeholder="Type the English answer"
+              placeholderTextColor={colors.muted}
+              editable={!isLocked}
+              autoCapitalize="sentences"
+              returnKeyType="done"
+              blurOnSubmit={false}
+              onSubmitEditing={() => void submitAnswer()}
+              style={styles.input}
+            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Check review answer"
+              disabled={isLocked || !answer.trim()}
+              onPress={() => void submitAnswer()}
+              style={({ pressed }) => [
+                styles.submitButton,
+                pressed && styles.pressed,
+                (isLocked || !answer.trim()) && styles.disabled,
+              ]}
+            >
+              <Send color={colors.background} size={18} />
+              <AppText style={styles.submitText}>Check</AppText>
+            </Pressable>
           </View>
 
           <View style={styles.actions}>
@@ -248,38 +287,9 @@ export default function ReviewPracticeScreen() {
               Skip
             </AppButton>
           </View>
-
-          <View style={styles.answerPanel}>
-            <TextInput
-              accessibilityLabel="Review answer"
-              value={answer}
-              onChangeText={setAnswer}
-              placeholder="Type the English answer"
-              placeholderTextColor={colors.muted}
-              editable={!isLocked}
-              autoCapitalize="sentences"
-              returnKeyType="done"
-              onSubmitEditing={() => void submitAnswer()}
-              style={styles.input}
-            />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Check review answer"
-              disabled={isLocked || !answer.trim()}
-              onPress={() => void submitAnswer()}
-              style={({ pressed }) => [
-                styles.submitButton,
-                pressed && styles.pressed,
-                (isLocked || !answer.trim()) && styles.disabled,
-              ]}
-            >
-              <Send color={colors.background} size={18} />
-              <AppText style={styles.submitText}>Check</AppText>
-            </Pressable>
-          </View>
         </View>
 
-        <View style={styles.sideColumn}>
+        <View style={[styles.sideColumn, isMobile && styles.sideColumnMobile]}>
           <View style={styles.sideCard}>
             <AppText variant="h3">Previous</AppText>
             {previousItem ? (
@@ -323,15 +333,27 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
     flexWrap: "wrap",
   },
+  layoutMobile: {
+    flexDirection: "column",
+    gap: spacing.md,
+  },
   mainColumn: {
     flex: 2,
     minWidth: 300,
     gap: spacing.md,
   },
+  mainColumnMobile: {
+    width: "100%",
+    minWidth: 0,
+  },
   sideColumn: {
     flex: 1,
     minWidth: 240,
     gap: spacing.md,
+  },
+  sideColumnMobile: {
+    width: "100%",
+    minWidth: 0,
   },
   practiceCard: {
     minHeight: 260,
@@ -344,6 +366,11 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.primary,
   },
+  practiceCardMobile: {
+    minHeight: 176,
+    padding: spacing.lg,
+    gap: spacing.sm,
+  },
   practiceCardCorrect: {
     borderColor: colors.success,
     backgroundColor: "rgba(34,197,94,0.10)",
@@ -354,6 +381,9 @@ const styles = StyleSheet.create({
   },
   prompt: {
     textAlign: "center",
+  },
+  promptMobile: {
+    lineHeight: 34,
   },
   hintBox: {
     width: "100%",

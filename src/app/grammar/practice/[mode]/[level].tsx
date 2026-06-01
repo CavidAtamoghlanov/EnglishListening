@@ -163,6 +163,14 @@ export default function GrammarPracticeScreen() {
         onPress={() => setHintVisible((value) => !value)}
       />
 
+      <GrammarManualAnswer
+        value={manualAnswer}
+        onChangeText={setManualAnswer}
+        placeholder={placeholder}
+        disabled={inputsDisabled}
+        onSubmit={() => void submitManualAnswer()}
+      />
+
       <View style={styles.actions}>
         <AppButton
           variant="secondary"
@@ -192,14 +200,6 @@ export default function GrammarPracticeScreen() {
         message={practice.feedback.message}
         explanation={explanation}
         correctAnswer={tone === "wrong" ? currentExercise.correctAnswer : undefined}
-      />
-
-      <GrammarManualAnswer
-        value={manualAnswer}
-        onChangeText={setManualAnswer}
-        placeholder={placeholder}
-        disabled={inputsDisabled}
-        onSubmit={() => void submitManualAnswer()}
       />
     </LessonShell>
   );

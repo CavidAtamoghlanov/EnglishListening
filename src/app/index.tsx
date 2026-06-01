@@ -10,25 +10,54 @@ import { ProfileCard } from "../components/profile/ProfileCard";
 import { Screen } from "../components/layout/Screen";
 import { colors } from "../theme/colors";
 import { spacing } from "../theme/spacing";
+import { useAuth } from "../features/auth/hooks/useAuth";
 import { useActiveProfile } from "../features/profile/hooks/useActiveProfile";
 import { useProfiles } from "../features/profile/hooks/useProfiles";
 import { progressStorageService } from "../features/progress/services/progressStorageService";
+import { cloudSyncService } from "../features/sync/services/cloudSyncService";
+import { localUserDataService } from "../features/sync/services/localUserDataService";
 
 export default function ProfilePickerScreen() {
   const router = useRouter();
   const { profiles, isLoading } = useProfiles();
+  const { session, offlineMode, isLoading: isAuthLoading } = useAuth();
   const { setActiveProfileById, clearActiveProfile } = useActiveProfile();
   const [summaries, setSummaries] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    clearActiveProfile();
-  }, [clearActiveProfile]);
+    if (isAuthLoading) {
+      return;
+    }
+    if (!session && !offlineMode) {
+      router.replace("/auth/login");
+      return;
+    }
+    if (session) {
+      void (async () => {
+        try {
+          const data = await cloudSyncService.pull(session);
+          return localUserDataService.applyCloudDataToLocal(data, session.user);
+        } catch {
+          return localUserDataService.ensureLocalProfile(session.user);
+        }
+      })().then((profile) => {
+        void setActiveProfileById(profile.id).then(() => router.replace("/home"));
+      });
+    }
+  }, [isAuthLoading, offlineMode, router, session, setActiveProfileById]);
 
   useEffect(() => {
-    if (!isLoading && profiles.length === 0) {
+    if (session) {
+      return;
+    }
+    clearActiveProfile();
+  }, [clearActiveProfile, session]);
+
+  useEffect(() => {
+    if (!session && offlineMode && !isLoading && profiles.length === 0) {
       router.replace("/profile/create");
     }
-  }, [isLoading, profiles.length, router]);
+  }, [isLoading, offlineMode, profiles.length, router, session]);
 
   useEffect(() => {
     let mounted = true;
@@ -70,7 +99,7 @@ export default function ProfilePickerScreen() {
     }
   }
 
-  if (isLoading || profiles.length === 0) {
+  if (isAuthLoading || session || isLoading || profiles.length === 0) {
     return (
       <Screen scroll={false} contentStyle={styles.center}>
         <ActivityIndicator color={colors.primary} size="large" />

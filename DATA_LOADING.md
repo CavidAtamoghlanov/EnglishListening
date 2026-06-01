@@ -8,7 +8,7 @@ Known impact:
 
 - Expo web export works.
 - The web JavaScript bundle is large because the word/sentence banks are bundled.
-- Latest checked export emitted a single web JS bundle of about 24 MB.
+- Latest checked export emitted a single web JS bundle of about 25 MB.
 - Home no longer imports the word data service just to show the continue card; it uses centralized level target counts until a session order exists.
 - This checkpoint does not rewrite the core word/sentence practice services because changing synchronous data APIs to async loaders would touch the most important existing flows.
 

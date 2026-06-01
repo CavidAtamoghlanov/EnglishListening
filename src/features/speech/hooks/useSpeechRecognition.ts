@@ -5,8 +5,10 @@ import {
   type BrowserSpeechRecognition,
   type BrowserSpeechRecognitionErrorEvent,
   type BrowserSpeechRecognitionResultEvent,
+  normalizeSpeechError,
   speechRecognitionService,
 } from "../services/speechRecognitionService";
+import { speechDiagnosticsService } from "../services/speechDiagnosticsService";
 import type { SpeechRecognitionState } from "../types";
 
 type UseSpeechRecognitionOptions = {
@@ -18,12 +20,18 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const optionsRef = useRef(options);
   const isListeningRef = useRef(false);
+  const manuallyStoppedRef = useRef(false);
   const [state, setState] = useState<SpeechRecognitionState>({
     isAvailable: speechRecognitionService.isNativeRecognitionAvailable(),
     isListening: false,
     transcript: "",
+    interimTranscript: "",
     error: null,
+    errorCode: null,
+    lastConfidence: null,
     permissionDenied: false,
+    isRecoverableError: false,
+    shouldRecommendManualFallback: false,
   });
 
   useEffect(() => {
@@ -35,10 +43,50 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
     setState((current) => ({ ...current, isListening }));
   }, []);
 
+  const applySpeechError = useCallback((rawError: string | null | undefined) => {
+    const normalized = normalizeSpeechError(rawError, {
+      manualStop: manuallyStoppedRef.current,
+    });
+
+    if (!normalized.message) {
+      speechDiagnosticsService.clearLastError();
+      setState((current) => ({
+        ...current,
+        isListening: false,
+        error: null,
+        errorCode: null,
+        permissionDenied: false,
+        isRecoverableError: true,
+        shouldRecommendManualFallback: false,
+      }));
+      return;
+    }
+
+    speechDiagnosticsService.recordError(normalized.message, normalized.code);
+    setState((current) => ({
+      ...current,
+      isListening: false,
+      error: normalized.message,
+      errorCode: normalized.code,
+      permissionDenied: normalized.isPermissionDenied,
+      isRecoverableError: normalized.isRecoverable,
+      shouldRecommendManualFallback: normalized.shouldRecommendManualFallback,
+    }));
+  }, []);
+
   useSpeechRecognitionEvent("start", () => {
     if (Platform.OS !== "web") {
+      manuallyStoppedRef.current = false;
       isListeningRef.current = true;
-      setState((current) => ({ ...current, isListening: true, error: null }));
+      setState((current) => ({
+        ...current,
+        isListening: true,
+        error: null,
+        errorCode: null,
+        permissionDenied: false,
+        isRecoverableError: false,
+        shouldRecommendManualFallback: false,
+      }));
     }
   });
 
@@ -50,8 +98,16 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
 
   useSpeechRecognitionEvent("result", (event) => {
     if (Platform.OS !== "web") {
-      const transcript = event.results[0]?.transcript ?? "";
-      setState((current) => ({ ...current, transcript }));
+      const result = event.results[0] as { transcript?: string; confidence?: number } | undefined;
+      const transcript = result?.transcript ?? "";
+      const confidence = typeof result?.confidence === "number" ? result.confidence : null;
+      speechDiagnosticsService.recordTranscript(transcript, confidence);
+      setState((current) => ({
+        ...current,
+        transcript: event.isFinal ? transcript : current.transcript,
+        interimTranscript: event.isFinal ? "" : transcript,
+        lastConfidence: confidence,
+      }));
       optionsRef.current.onResult?.(transcript, event.isFinal);
     }
   });
@@ -59,12 +115,7 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
   useSpeechRecognitionEvent("error", (event) => {
     if (Platform.OS !== "web") {
       isListeningRef.current = false;
-      setState((current) => ({
-        ...current,
-        isListening: false,
-        error: event.message,
-        permissionDenied: event.error === "not-allowed",
-      }));
+      applySpeechError(event.message || event.error);
     }
   });
 
@@ -73,15 +124,31 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
       return;
     }
 
-    setState((current) => ({ ...current, transcript: "", error: null }));
+    manuallyStoppedRef.current = false;
+    speechDiagnosticsService.clearLastError();
+    setState((current) => ({
+      ...current,
+      transcript: "",
+      interimTranscript: "",
+      error: null,
+      errorCode: null,
+      lastConfidence: null,
+      permissionDenied: false,
+      isRecoverableError: false,
+      shouldRecommendManualFallback: false,
+    }));
 
     if (Platform.OS === "web") {
       const WebSpeechRecognition = speechRecognitionService.getWebSpeechRecognition();
       if (!WebSpeechRecognition) {
+        const normalized = normalizeSpeechError("unsupported");
+        speechDiagnosticsService.recordError(normalized.message, normalized.code);
         setState((current) => ({
           ...current,
           isAvailable: false,
-          error: "Speech recognition is not available in this browser.",
+          error: normalized.message,
+          errorCode: normalized.code,
+          shouldRecommendManualFallback: true,
         }));
         return;
       }
@@ -93,26 +160,39 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
       recognition.maxAlternatives = 1;
 
       recognition.onstart = () => {
+        manuallyStoppedRef.current = false;
         isListeningRef.current = true;
-        setState((current) => ({ ...current, isListening: true, error: null }));
+        setState((current) => ({
+          ...current,
+          isListening: true,
+          error: null,
+          errorCode: null,
+          permissionDenied: false,
+          isRecoverableError: false,
+          shouldRecommendManualFallback: false,
+        }));
       };
       recognition.onend = () => {
         updateListening(false);
       };
       recognition.onerror = (event: BrowserSpeechRecognitionErrorEvent) => {
         isListeningRef.current = false;
-        setState((current) => ({
-          ...current,
-          isListening: false,
-          error: event.error === "not-allowed" ? "Microphone permission was denied." : event.error,
-          permissionDenied: event.error === "not-allowed",
-        }));
+        applySpeechError(event.message ?? event.error);
       };
       recognition.onresult = (event: BrowserSpeechRecognitionResultEvent) => {
         const result = event.results[event.results.length - 1];
         const transcript = result?.[0]?.transcript ?? "";
-        setState((current) => ({ ...current, transcript }));
-        optionsRef.current.onResult?.(transcript, result?.isFinal ?? false);
+        const confidence =
+          typeof result?.[0]?.confidence === "number" ? result[0].confidence : null;
+        const isFinal = result?.isFinal ?? false;
+        speechDiagnosticsService.recordTranscript(transcript, confidence);
+        setState((current) => ({
+          ...current,
+          transcript: isFinal ? transcript : current.transcript,
+          interimTranscript: isFinal ? "" : transcript,
+          lastConfidence: confidence,
+        }));
+        optionsRef.current.onResult?.(transcript, isFinal);
       };
 
       recognitionRef.current = recognition;
@@ -120,38 +200,88 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
         recognition.start();
       } catch (error) {
         isListeningRef.current = false;
+        const normalized = normalizeSpeechError(
+          error instanceof Error ? error.message : "start-failed",
+        );
+        speechDiagnosticsService.recordError(normalized.message, normalized.code);
         setState((current) => ({
           ...current,
           isListening: false,
-          error: error instanceof Error ? error.message : "Could not start speech recognition.",
+          error: normalized.message,
+          errorCode: normalized.code,
+          permissionDenied: normalized.isPermissionDenied,
+          isRecoverableError: normalized.isRecoverable,
+          shouldRecommendManualFallback: normalized.shouldRecommendManualFallback,
         }));
       }
       return;
     }
 
     if (!speechRecognitionService.isNativeRecognitionAvailable()) {
+      const normalized = normalizeSpeechError("unsupported");
+      speechDiagnosticsService.recordError(normalized.message, normalized.code);
       setState((current) => ({
         ...current,
         isAvailable: false,
-        error: "Speech recognition is not available on this device.",
+        error: normalized.message,
+        errorCode: normalized.code,
+        shouldRecommendManualFallback: true,
       }));
       return;
     }
 
-    const granted = await speechRecognitionService.requestNativePermissions();
+    let granted = false;
+    try {
+      granted = await speechRecognitionService.requestNativePermissions();
+    } catch (error) {
+      const normalized = normalizeSpeechError(
+        error instanceof Error ? error.message : "permission-denied",
+      );
+      speechDiagnosticsService.recordError(normalized.message, normalized.code);
+      setState((current) => ({
+        ...current,
+        permissionDenied: normalized.isPermissionDenied,
+        error: normalized.message,
+        errorCode: normalized.code,
+        shouldRecommendManualFallback: normalized.shouldRecommendManualFallback,
+      }));
+      return;
+    }
+
     if (!granted) {
+      const normalized = normalizeSpeechError("permission-denied");
+      speechDiagnosticsService.recordError(normalized.message, normalized.code);
       setState((current) => ({
         ...current,
         permissionDenied: true,
-        error: "Microphone or speech recognition permission was denied.",
+        error: normalized.message,
+        errorCode: normalized.code,
+        shouldRecommendManualFallback: true,
       }));
       return;
     }
 
-    speechRecognitionService.startNativeRecognition(optionsRef.current.contextualStrings ?? []);
-  }, [updateListening]);
+    try {
+      speechRecognitionService.startNativeRecognition(optionsRef.current.contextualStrings ?? []);
+    } catch (error) {
+      const normalized = normalizeSpeechError(
+        error instanceof Error ? error.message : "start-failed",
+      );
+      speechDiagnosticsService.recordError(normalized.message, normalized.code);
+      setState((current) => ({
+        ...current,
+        isListening: false,
+        error: normalized.message,
+        errorCode: normalized.code,
+        permissionDenied: normalized.isPermissionDenied,
+        isRecoverableError: normalized.isRecoverable,
+        shouldRecommendManualFallback: normalized.shouldRecommendManualFallback,
+      }));
+    }
+  }, [applySpeechError, updateListening]);
 
   const stop = useCallback(() => {
+    manuallyStoppedRef.current = true;
     isListeningRef.current = false;
     if (Platform.OS === "web") {
       recognitionRef.current?.stop();
@@ -161,14 +291,19 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
     ExpoSpeechRecognitionModule.stop();
   }, []);
 
+  const resetTranscript = useCallback(() => {
+    setState((current) => ({ ...current, transcript: "", interimTranscript: "" }));
+  }, []);
+
   return useMemo(
     () => ({
       ...state,
       start,
       stop,
+      resetTranscript,
       manualFallbackRecommended:
-        !state.isAvailable || Boolean(state.error) || state.permissionDenied,
+        !state.isAvailable || state.permissionDenied || state.shouldRecommendManualFallback,
     }),
-    [state, start, stop],
+    [state, start, stop, resetTranscript],
   );
 }

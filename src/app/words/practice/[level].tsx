@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Animated, Modal, Platform, Pressable, StyleSheet, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Check, ChevronLeft, Info, Lightbulb, SkipForward, Star, Volume2, X } from "lucide-react-native";
@@ -19,8 +19,7 @@ import { LessonTopBar } from "../../../components/lesson/LessonTopBar";
 import { lessonColors } from "../../../components/lesson/lessonTheme";
 import { getPracticeModeConfig, parsePracticeMode } from "../../../config/reviewModes";
 import { useActiveProfile } from "../../../features/profile/hooks/useActiveProfile";
-import { useContinuousListening } from "../../../features/speech/hooks/useContinuousListening";
-import { useSpeechRecognition } from "../../../features/speech/hooks/useSpeechRecognition";
+import { useSpeechPracticeController } from "../../../features/speech/hooks/useSpeechPracticeController";
 import { useTextToSpeech } from "../../../features/speech/hooks/useTextToSpeech";
 import { useTapOrDoubleTap } from "../../../features/words/hooks/useTapOrDoubleTap";
 import { useWordsPractice } from "../../../features/words/hooks/useWordsPractice";
@@ -39,7 +38,6 @@ export default function PracticeScreen() {
   const [showHint, setShowHint] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const feedbackScale = useMemo(() => new Animated.Value(1), []);
-  const lastFinalSpeechKeyRef = useRef<string | null>(null);
   const inputsDisabled = practice.isAnswerLocked;
 
   useEffect(() => {
@@ -53,7 +51,6 @@ export default function PracticeScreen() {
     setRecognizedText("");
     setShowHint(false);
     setShowDetails(false);
-    lastFinalSpeechKeyRef.current = null;
   }, [practice.currentWord?.id, practice.currentIndex]);
 
   const contextualStrings = useMemo(
@@ -64,33 +61,31 @@ export default function PracticeScreen() {
     [practice.currentWord],
   );
 
-  const handleSpeechResult = useCallback(
-    (transcript: string, isFinal: boolean) => {
+  const handleSpeechTranscript = useCallback((transcript: string) => {
+    setRecognizedText(transcript);
+  }, []);
+
+  const handleFinalSpeechResult = useCallback(
+    (transcript: string) => {
       if (inputsDisabled) {
         return;
       }
 
       setRecognizedText(transcript);
-      if (isFinal && transcript.trim()) {
-        const finalKey = `${practice.currentWord?.id ?? "none"}:${practice.currentIndex}:${transcript.trim().toLowerCase()}`;
-        if (lastFinalSpeechKeyRef.current === finalKey) {
-          return;
-        }
-        lastFinalSpeechKeyRef.current = finalKey;
+      if (transcript.trim()) {
         void practice.submitAnswer(transcript, "speech");
       }
     },
     [inputsDisabled, practice],
   );
 
-  const speech = useSpeechRecognition({
+  const speechController = useSpeechPracticeController({
     contextualStrings,
-    onResult: handleSpeechResult,
-  });
-  const continuousListening = useContinuousListening({
-    speech,
+    itemKey: `${practice.currentWord?.id ?? "none"}:${practice.currentIndex}`,
     canListen: !inputsDisabled,
     hasActiveItem: Boolean(practice.currentWord),
+    onTranscript: handleSpeechTranscript,
+    onFinalResult: handleFinalSpeechResult,
   });
 
   useEffect(() => {
@@ -117,24 +112,24 @@ export default function PracticeScreen() {
       return;
     }
 
-    speech.stop();
+    speechController.resetTranscript();
     setManualAnswer("");
     setRecognizedText("");
     setShowHint(false);
     void practice.skipCurrentItem();
-  }, [inputsDisabled, practice, speech]);
+  }, [inputsDisabled, practice, speechController]);
 
   const handlePrevious = useCallback(() => {
     if (inputsDisabled || !practice.canGoPrevious) {
       return;
     }
 
-    speech.stop();
+    speechController.resetTranscript();
     setManualAnswer("");
     setRecognizedText("");
     setShowHint(false);
     void practice.goToPreviousItem();
-  }, [inputsDisabled, practice, speech]);
+  }, [inputsDisabled, practice, speechController]);
 
   if (!activeProfile || practice.isLoading) {
     return null;
@@ -213,9 +208,9 @@ export default function PracticeScreen() {
   const cardTone: LessonCardTone = feedbackTone;
   const cardFeedbackMessage =
     feedbackTone === "correct"
-      ? "Düzdür!"
+      ? practice.feedback.message ?? "Düzdür!"
       : feedbackTone === "wrong"
-        ? "Yanlışdır - yenidən cəhd et"
+        ? practice.feedback.message ?? "Yanlışdır - yenidən cəhd et"
         : null;
   const hintText = showHint
     ? `English: ${currentWord.english}${currentWord.hint ? ` - ${currentWord.hint}` : ""}`
@@ -287,6 +282,40 @@ export default function PracticeScreen() {
           }
         />
 
+        {feedbackTone === "neutral" || practice.feedback.message || speechController.manualFallbackRecommended ? (
+          <LessonFeedbackOverlay
+            displayedAnswer={displayedAnswer}
+            answerLabel={answerLabel}
+            message={practice.feedback.message}
+            tone={feedbackTone}
+            hint={
+              speechController.isListening
+                ? "Danışın..."
+                : speechController.isContinuousMode
+                  ? "Listening stays on for the next item."
+                : "Mic işlət, ipucu aç, ya da yazaraq cavabla."
+            }
+            error={
+              speechController.lastError ??
+              (speechController.manualFallbackRecommended
+                ? "Speech recognition is unavailable. Type the answer instead."
+                : null)
+            }
+            scorePercent={practice.feedback.scorePercent}
+            expectedAnswer={practice.feedback.expectedAnswer}
+            missingWords={practice.feedback.missingWords}
+            scale={feedbackScale}
+          />
+        ) : null}
+
+        <LessonManualAnswerSheet
+          value={manualAnswer}
+          onChangeText={setManualAnswer}
+          placeholder="Type English answer"
+          disabled={inputsDisabled}
+          onSubmit={() => void submitManualAnswer()}
+        />
+
         <LessonActionDock
           actions={[
             {
@@ -312,40 +341,10 @@ export default function PracticeScreen() {
               onPress: handleSkip,
             },
           ]}
-          onMicPress={continuousListening.toggleContinuousListening}
-          isListening={continuousListening.isMicActive}
+          onMicPress={speechController.toggleListening}
+          isListening={speechController.isMicActive}
           actionsDisabled={inputsDisabled}
-          micDisabled={speech.manualFallbackRecommended}
-        />
-
-        {feedbackTone === "neutral" || speech.manualFallbackRecommended ? (
-          <LessonFeedbackOverlay
-            displayedAnswer={displayedAnswer}
-            answerLabel={answerLabel}
-            message={practice.feedback.message}
-            tone={feedbackTone}
-            hint={
-              speech.isListening
-                ? "Danışın..."
-                : continuousListening.isContinuousListening
-                  ? "Listening stays on for the next item."
-                : "Mic işlət, ipucu aç, ya da yazaraq cavabla."
-            }
-            error={
-              speech.manualFallbackRecommended
-                ? speech.error ?? "Speech recognition is unavailable. Type the answer instead."
-                : null
-            }
-            scale={feedbackScale}
-          />
-        ) : null}
-
-        <LessonManualAnswerSheet
-          value={manualAnswer}
-          onChangeText={setManualAnswer}
-          placeholder="Type English answer"
-          disabled={inputsDisabled}
-          onSubmit={() => void submitManualAnswer()}
+          micDisabled={speechController.manualFallbackRecommended}
         />
       </LessonShell>
 

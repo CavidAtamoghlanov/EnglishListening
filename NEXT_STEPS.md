@@ -4,6 +4,13 @@ This checkpoint stops after the shared learning engine, XP, daily path, and Mist
 
 ## Remaining Major Modules
 
+0. Auth/Sync Production Hardening
+   - Test Vercel API routes with real `BLOB_READ_WRITE_TOKEN`, `AUTH_TOKEN_SECRET`, and `ADMIN_TOKEN`.
+   - Add automatic debounced sync hooks around progress/settings writes.
+   - Add richer conflict resolution for cloud/local progress merges.
+   - Add user-facing export/import JSON actions.
+   - Add admin summary redaction and pagination before real multi-user scale.
+
 1. Developer English
    - Add routes under `src/app/developer-english`.
    - Add data under `src/data/developer-english`.
@@ -32,11 +39,7 @@ This checkpoint stops after the shared learning engine, XP, daily path, and Mist
    - Start with new modules, then move to Words/Sentences.
    - Current safe improvement removed Home's direct word-bank import; full async migration is still deferred.
 
-6. Sentence Data Gap
-   - `translate/B1` still has 10 items while the current validator expects 5000.
-   - Expand that JSON in a dedicated data task.
-
-7. Optional Future Polish
+6. Optional Future Polish
    - Add Developer English, Mini Dialogues, Listening Stories, and Writing Journal in dedicated module passes.
    - Add richer chart visuals after the current View-based statistics dashboard has enough real learning history.
 

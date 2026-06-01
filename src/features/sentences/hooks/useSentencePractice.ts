@@ -11,6 +11,10 @@ import { sentenceProgressStorageService } from "../services/sentenceProgressStor
 import type { SentenceItem, SentenceLevel, SentencePracticeMode } from "../types";
 import { isSentenceAnswerCorrect } from "../utils/sentenceAnswer";
 import { learningRecorderService } from "../../learning/services/learningRecorderService";
+import {
+  scoreSpeechAnswer,
+  type SpeechScoreResult,
+} from "../../speech/utils/speechAnswerScoring";
 
 export type SubmittedSentenceSource = "speech" | "manual";
 
@@ -19,6 +23,34 @@ function sentenceAtIndex(sentences: SentenceItem[], index: number): SentenceItem
     return null;
   }
   return sentences[index] ?? null;
+}
+
+function buildSpeechFeedback(
+  score: SpeechScoreResult,
+  expectedAnswer: string,
+): SentencePracticeFeedback {
+  const scorePercent = Math.round(score.score * 100);
+  if (score.isAccepted) {
+    const closeEnough = score.reason === "similarity" || score.reason === "word-coverage";
+    return {
+      type: "correct",
+      message: closeEnough ? `Good enough! Score: ${scorePercent}%` : "Great!",
+      scorePercent,
+      expectedAnswer,
+      missingWords: score.missingWords,
+      closeEnough,
+    };
+  }
+
+  const missing = score.missingWords.slice(0, 5).join(", ");
+  return {
+    type: "wrong",
+    message: missing ? `Try again. Missing: ${missing}` : "Try again. Say the full sentence clearly.",
+    scorePercent,
+    expectedAnswer,
+    missingWords: score.missingWords,
+    closeEnough: false,
+  };
 }
 
 export function useSentencePractice(
@@ -107,12 +139,23 @@ export function useSentencePractice(
         const levelProgress = progress.levels[mode][level];
         const alreadyCompleted = levelProgress.completedSentenceIds.includes(currentSentence.id);
 
+        const speechScore =
+          source === "speech"
+            ? scoreSpeechAnswer(trimmed, currentSentence.english, currentSentence.acceptedAnswers)
+            : null;
+        const answerFeedback = speechScore
+          ? buildSpeechFeedback(speechScore, currentSentence.english)
+          : null;
+
         if (alreadyCompleted) {
-          const correct = isSentenceAnswerCorrect(currentSentence, trimmed);
-          setFeedback({
-            type: correct ? "correct" : "wrong",
-            message: correct ? "Great!" : "Try again. Say the full sentence clearly.",
-          });
+          const correct =
+            speechScore?.isAccepted ?? isSentenceAnswerCorrect(currentSentence, trimmed);
+          setFeedback(
+            answerFeedback ?? {
+              type: correct ? "correct" : "wrong",
+              message: correct ? "Great!" : "Try again. Say the full sentence clearly.",
+            },
+          );
           setSubmittedAnswer(trimmed);
           setSubmittedAnswerSource(source);
           await learningRecorderService.recordPracticeResult({
@@ -178,6 +221,8 @@ export function useSentencePractice(
           currentIndex,
           mode,
           level,
+          answerCorrectOverride: speechScore?.isAccepted,
+          feedbackOverride: answerFeedback ?? undefined,
         });
 
         await sentenceProgressStorageService.saveProgress(profileId, result.progress);

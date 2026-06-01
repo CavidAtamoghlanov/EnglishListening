@@ -4,6 +4,7 @@
   "main": "expo-router/entry",
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@vercel/blob": "^2.4.0",
     "expo": "~56.0.3",
     "expo-constants": "~56.0.14",
     "expo-linear-gradient": "~56.0.4",
@@ -41,6 +42,8 @@
     "validate:grammar": "tsx scripts/validateGrammar.ts",
     "validate:writing": "tsx scripts/validateWriting.ts",
     "validate:learning": "tsx scripts/validateLearning.ts",
+    "validate:users": "tsx scripts/validateUsersJson.ts",
+    "test:speech-scoring": "tsx scripts/testSpeechScoring.ts",
     "stats:words": "tsx scripts/wordStats.ts",
     "build:words": "tsx scripts/buildWordBank.ts",
     "generate:sentences": "tsx scripts/generateSentences.ts",

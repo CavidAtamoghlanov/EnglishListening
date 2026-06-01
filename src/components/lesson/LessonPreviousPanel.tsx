@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
-import { Play } from "lucide-react-native";
+import { ChevronDown, Play } from "lucide-react-native";
 import { AppText } from "../common/AppText";
+import { useResponsive } from "../../utils/useResponsive";
 import { lessonColors } from "./lessonTheme";
 
 type LessonPreviousPanelProps = {
@@ -20,30 +22,47 @@ export function LessonPreviousPanel({
   secondary,
   onReplay,
 }: LessonPreviousPanelProps) {
+  const { isMobile } = useResponsive();
+  const [expanded, setExpanded] = useState(false);
   const hasItem = Boolean(primary || secondary);
+  const compact = isMobile && !expanded;
 
   return (
     <View style={styles.panel}>
-      <View style={styles.header}>
-        <AppText style={styles.title}>{title}</AppText>
+      <Pressable
+        accessibilityRole={isMobile ? "button" : undefined}
+        accessibilityLabel={isMobile ? `${expanded ? "Collapse" : "Expand"} ${title}` : undefined}
+        onPress={isMobile ? () => setExpanded((value) => !value) : undefined}
+        style={({ pressed }) => [styles.header, pressed && isMobile && styles.pressed]}
+      >
+        <View style={styles.headerTitle}>
+          <AppText style={styles.title}>{title}</AppText>
+          {isMobile ? (
+            <ChevronDown
+              color={lessonColors.muted}
+              size={18}
+              style={{ transform: [{ rotate: expanded ? "180deg" : "0deg" }] }}
+            />
+          ) : null}
+        </View>
         {hasItem && icon ? <AppText style={styles.icon}>{icon}</AppText> : null}
-      </View>
+      </Pressable>
 
       {!hasItem ? (
         <AppText style={styles.empty}>{emptyText}</AppText>
       ) : (
-        <View style={styles.body}>
+        <View style={[styles.body, compact && styles.bodyCompact]}>
           {primary ? (
-            <AppText style={styles.primary} numberOfLines={3}>
+            <AppText style={styles.primary} numberOfLines={compact ? 1 : 3}>
               {primary}
             </AppText>
           ) : null}
-          {secondary ? (
-            <AppText style={styles.secondary} numberOfLines={3}>
+          {secondary && (!compact || !primary) ? (
+            <AppText style={styles.secondary} numberOfLines={compact ? 1 : 3}>
               {secondary}
             </AppText>
           ) : null}
-          {onReplay ? (
+          {onReplay && !compact ? (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`Replay ${title.toLowerCase()}`}
@@ -62,8 +81,8 @@ export function LessonPreviousPanel({
 const styles = StyleSheet.create({
   panel: {
     width: "100%",
-    minHeight: 112,
-    padding: 16,
+    minHeight: 0,
+    padding: 14,
     borderRadius: 22,
     backgroundColor: lessonColors.panel,
     borderWidth: 1,
@@ -75,6 +94,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     gap: 8,
+  },
+  headerTitle: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   title: {
     color: lessonColors.text,
@@ -97,6 +123,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingRight: 54,
     gap: 4,
+  },
+  bodyCompact: {
+    minHeight: 24,
+    paddingRight: 0,
   },
   primary: {
     color: lessonColors.yellowButton,

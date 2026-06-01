@@ -222,6 +222,51 @@ export default function WritingPracticeScreen() {
         onPress={revealNextHint}
       />
 
+      <View style={styles.inputPanel}>
+        <TextInput
+          accessibilityLabel="Writing answer"
+          value={manualAnswer}
+          onChangeText={setManualAnswer}
+          placeholder={getPlaceholder(mode)}
+          placeholderTextColor={lessonColors.muted}
+          autoCapitalize="sentences"
+          editable={!inputsDisabled}
+          returnKeyType="done"
+          blurOnSubmit={false}
+          onSubmitEditing={() => void submitManualAnswer()}
+          style={styles.input}
+        />
+        <View style={styles.inputActions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Clear answer"
+            disabled={!manualAnswer || inputsDisabled}
+            onPress={() => setManualAnswer("")}
+            style={({ pressed }) => [
+              styles.clearButton,
+              pressed && styles.pressed,
+              (!manualAnswer || inputsDisabled) && styles.disabled,
+            ]}
+          >
+            <X color={lessonColors.text} size={18} strokeWidth={2.5} />
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Check answer"
+            disabled={inputsDisabled}
+            onPress={() => void submitManualAnswer()}
+            style={({ pressed }) => [
+              styles.submitButton,
+              pressed && !inputsDisabled && styles.pressed,
+              inputsDisabled && styles.disabled,
+            ]}
+          >
+            <Send color={lessonColors.background} size={18} strokeWidth={2.5} />
+            <AppText style={styles.submitText}>Check</AppText>
+          </Pressable>
+        </View>
+      </View>
+
       <View style={styles.actions}>
         <AppButton
           variant="secondary"
@@ -263,50 +308,6 @@ export default function WritingPracticeScreen() {
         explanation={explanation}
         correctAnswer={tone !== "neutral" ? currentItem.correctAnswer : undefined}
       />
-
-      <View style={styles.inputPanel}>
-        <TextInput
-          accessibilityLabel="Writing answer"
-          value={manualAnswer}
-          onChangeText={setManualAnswer}
-          placeholder={getPlaceholder(mode)}
-          placeholderTextColor={lessonColors.muted}
-          autoCapitalize="sentences"
-          editable={!inputsDisabled}
-          returnKeyType="done"
-          onSubmitEditing={() => void submitManualAnswer()}
-          style={styles.input}
-        />
-        <View style={styles.inputActions}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Clear answer"
-            disabled={!manualAnswer || inputsDisabled}
-            onPress={() => setManualAnswer("")}
-            style={({ pressed }) => [
-              styles.clearButton,
-              pressed && styles.pressed,
-              (!manualAnswer || inputsDisabled) && styles.disabled,
-            ]}
-          >
-            <X color={lessonColors.text} size={18} strokeWidth={2.5} />
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Check answer"
-            disabled={inputsDisabled}
-            onPress={() => void submitManualAnswer()}
-            style={({ pressed }) => [
-              styles.submitButton,
-              pressed && !inputsDisabled && styles.pressed,
-              inputsDisabled && styles.disabled,
-            ]}
-          >
-            <Send color={lessonColors.background} size={18} strokeWidth={2.5} />
-            <AppText style={styles.submitText}>Check</AppText>
-          </Pressable>
-        </View>
-      </View>
     </LessonShell>
   );
 }

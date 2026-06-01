@@ -15,6 +15,10 @@ import { isAnswerCorrect } from "../utils/answerUtils";
 import { getNextIndexAfterSkip, moveCurrentItemToEnd } from "../../practice/utils/queue";
 import { wordsDataService } from "../services/wordsDataService";
 import { learningRecorderService } from "../../learning/services/learningRecorderService";
+import {
+  scoreSpeechAnswer,
+  type SpeechScoreResult,
+} from "../../speech/utils/speechAnswerScoring";
 
 export type SubmittedAnswerSource = "speech" | "manual";
 
@@ -23,6 +27,34 @@ function wordAtIndex(words: WordItem[], index: number): WordItem | null {
     return null;
   }
   return words[index] ?? null;
+}
+
+function buildSpeechFeedback(
+  score: SpeechScoreResult,
+  expectedAnswer: string,
+): PracticeFeedback {
+  const scorePercent = Math.round(score.score * 100);
+  if (score.isAccepted) {
+    const closeEnough = score.reason === "similarity" || score.reason === "word-coverage";
+    return {
+      type: "correct",
+      message: closeEnough ? `Good enough! Score: ${scorePercent}%` : "Good!",
+      scorePercent,
+      expectedAnswer,
+      missingWords: score.missingWords,
+      closeEnough,
+    };
+  }
+
+  const missing = score.missingWords.slice(0, 4).join(", ");
+  return {
+    type: "wrong",
+    message: missing ? `Try again. Missing: ${missing}` : "Try again. You are close.",
+    scorePercent,
+    expectedAnswer,
+    missingWords: score.missingWords,
+    closeEnough: false,
+  };
 }
 
 export function useWordsPractice(
@@ -114,12 +146,22 @@ export function useWordsPractice(
         const levelProgress = progress.levels[currentWord.level];
         const alreadyCompleted = levelProgress.completedWordIds.includes(currentWord.id);
 
+        const speechScore =
+          source === "speech"
+            ? scoreSpeechAnswer(trimmed, currentWord.english, currentWord.acceptedAnswers)
+            : null;
+        const answerFeedback = speechScore
+          ? buildSpeechFeedback(speechScore, currentWord.english)
+          : null;
+
         if (alreadyCompleted) {
-          const correct = isAnswerCorrect(currentWord, trimmed);
-          setFeedback({
-            type: correct ? "correct" : "wrong",
-            message: correct ? "Good!" : "Try again. You are close.",
-          });
+          const correct = speechScore?.isAccepted ?? isAnswerCorrect(currentWord, trimmed);
+          setFeedback(
+            answerFeedback ?? {
+              type: correct ? "correct" : "wrong",
+              message: correct ? "Good!" : "Try again. You are close.",
+            },
+          );
           setSubmittedAnswer(trimmed);
           setSubmittedAnswerSource(source);
           await learningRecorderService.recordPracticeResult({
@@ -189,6 +231,8 @@ export function useWordsPractice(
           currentIndex,
           mode,
           selectedLevel,
+          answerCorrectOverride: speechScore?.isAccepted,
+          feedbackOverride: answerFeedback ?? undefined,
         });
 
         await progressStorageService.saveProgress(profileId, result.progress);

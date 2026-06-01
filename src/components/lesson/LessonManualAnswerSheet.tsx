@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Pressable, StyleSheet, TextInput, View } from "react-native";
 import { ChevronDown, Keyboard, Send } from "lucide-react-native";
 import { AppText } from "../common/AppText";
+import { useResponsive } from "../../utils/useResponsive";
 import { lessonColors } from "./lessonTheme";
 
 type LessonManualAnswerSheetProps = {
@@ -10,6 +11,7 @@ type LessonManualAnswerSheetProps = {
   onSubmit: () => void;
   placeholder: string;
   disabled?: boolean;
+  defaultOpen?: boolean;
 };
 
 export function LessonManualAnswerSheet({
@@ -18,8 +20,10 @@ export function LessonManualAnswerSheet({
   onSubmit,
   placeholder,
   disabled = false,
+  defaultOpen,
 }: LessonManualAnswerSheetProps) {
-  const [open, setOpen] = useState(false);
+  const { isMobile } = useResponsive();
+  const [open, setOpen] = useState(defaultOpen ?? isMobile);
 
   return (
     <View style={styles.sheet}>
@@ -52,6 +56,7 @@ export function LessonManualAnswerSheet({
             editable={!disabled}
             returnKeyType="done"
             onSubmitEditing={onSubmit}
+            blurOnSubmit={false}
             style={styles.input}
           />
           <Pressable
@@ -73,7 +78,7 @@ export function LessonManualAnswerSheet({
 const styles = StyleSheet.create({
   sheet: {
     width: "100%",
-    maxWidth: 520,
+    maxWidth: 620,
     overflow: "hidden",
     borderRadius: 22,
     backgroundColor: "rgba(12,23,38,0.94)",
@@ -102,10 +107,14 @@ const styles = StyleSheet.create({
   body: {
     padding: 14,
     gap: 10,
+    flexDirection: "row",
+    alignItems: "stretch",
     borderTopWidth: 1,
     borderTopColor: lessonColors.border,
   },
   input: {
+    flex: 1,
+    minWidth: 0,
     minHeight: 48,
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -118,6 +127,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   submit: {
+    width: 96,
     minHeight: 48,
     borderRadius: 16,
     flexDirection: "row",

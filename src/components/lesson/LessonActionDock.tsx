@@ -4,6 +4,7 @@ import { Animated, Platform, Pressable, StyleSheet, View } from "react-native";
 import { Mic, Square } from "lucide-react-native";
 import type { LucideProps } from "lucide-react-native";
 import { AppText } from "../common/AppText";
+import { useResponsive } from "../../utils/useResponsive";
 import { lessonColors, lessonShadow } from "./lessonTheme";
 
 export type LessonAction = {
@@ -31,6 +32,7 @@ export function LessonActionDock({
   actionsDisabled,
   micDisabled,
 }: LessonActionDockProps) {
+  const { isMobile } = useResponsive();
   const resolvedActionsDisabled = actionsDisabled ?? disabled;
   const resolvedMicDisabled = micDisabled ?? disabled;
   const pulse = useMemo(() => new Animated.Value(0), []);
@@ -82,9 +84,9 @@ export function LessonActionDock({
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.sideActions}>
+      <View style={[styles.sideActions, isMobile && styles.sideActionsMobile]}>
         {leftActions.map((action) => (
-          <ActionButton key={action.label} action={action} disabled={resolvedActionsDisabled} />
+          <ActionButton key={action.label} action={action} disabled={resolvedActionsDisabled} compact={isMobile} />
         ))}
       </View>
 
@@ -95,26 +97,35 @@ export function LessonActionDock({
         disabled={resolvedMicDisabled}
         style={({ pressed }) => [
           styles.micWrap,
+          isMobile && styles.micWrapMobile,
           pressed && !resolvedMicDisabled && styles.pressed,
           resolvedMicDisabled && styles.disabled,
         ]}
       >
-        <Animated.View style={[styles.micPulse, { backgroundColor: micColor }, pulseStyle]} />
-        <View style={[styles.micButton, { backgroundColor: micColor }, lessonShadow]}>
-          <MicIcon color={isListening ? lessonColors.text : lessonColors.background} size={isListening ? 26 : 32} strokeWidth={2.8} />
+        <Animated.View style={[styles.micPulse, isMobile && styles.micPulseMobile, { backgroundColor: micColor }, pulseStyle]} />
+        <View style={[styles.micButton, isMobile && styles.micButtonMobile, { backgroundColor: micColor }, lessonShadow]}>
+          <MicIcon color={isListening ? lessonColors.text : lessonColors.background} size={isListening ? 24 : isMobile ? 28 : 32} strokeWidth={2.8} />
         </View>
       </Pressable>
 
-      <View style={styles.sideActions}>
+      <View style={[styles.sideActions, isMobile && styles.sideActionsMobile]}>
         {rightActions.map((action) => (
-          <ActionButton key={action.label} action={action} disabled={resolvedActionsDisabled} />
+          <ActionButton key={action.label} action={action} disabled={resolvedActionsDisabled} compact={isMobile} />
         ))}
       </View>
     </View>
   );
 }
 
-function ActionButton({ action, disabled }: { action: LessonAction; disabled: boolean }) {
+function ActionButton({
+  action,
+  disabled,
+  compact,
+}: {
+  action: LessonAction;
+  disabled: boolean;
+  compact: boolean;
+}) {
   const Icon = action.icon;
   const actionDisabled = disabled || Boolean(action.disabled);
   return (
@@ -125,6 +136,7 @@ function ActionButton({ action, disabled }: { action: LessonAction; disabled: bo
       disabled={actionDisabled}
       style={({ pressed }) => [
         styles.action,
+        compact && styles.actionCompact,
         action.active && styles.actionActive,
         pressed && !actionDisabled && styles.pressed,
         actionDisabled && styles.disabled,
@@ -132,10 +144,10 @@ function ActionButton({ action, disabled }: { action: LessonAction; disabled: bo
     >
       <Icon
         color={action.active ? lessonColors.yellowButton : lessonColors.text}
-        size={20}
+        size={compact ? 18 : 20}
         strokeWidth={2.5}
       />
-      <AppText variant="small" style={[styles.actionLabel, action.active && styles.actionLabelActive]} numberOfLines={1}>
+      <AppText variant="small" style={[styles.actionLabel, compact && styles.actionLabelCompact, action.active && styles.actionLabelActive]} numberOfLines={1}>
         {action.label}
       </AppText>
     </Pressable>
@@ -149,8 +161,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
-    paddingHorizontal: 6,
+    gap: 6,
+    paddingHorizontal: 0,
   },
   sideActions: {
     flex: 1,
@@ -158,6 +170,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     gap: 8,
+  },
+  sideActionsMobile: {
+    gap: 4,
   },
   action: {
     width: 66,
@@ -169,6 +184,11 @@ const styles = StyleSheet.create({
     backgroundColor: lessonColors.panel,
     borderWidth: 1,
     borderColor: lessonColors.border,
+  },
+  actionCompact: {
+    width: 56,
+    minHeight: 52,
+    borderRadius: 18,
   },
   actionActive: {
     borderColor: "rgba(250,204,21,0.45)",
@@ -182,6 +202,11 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     textAlign: "center",
   },
+  actionLabelCompact: {
+    maxWidth: 50,
+    fontSize: 10,
+    lineHeight: 12,
+  },
   actionLabelActive: {
     color: lessonColors.yellowButton,
   },
@@ -191,12 +216,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  micWrapMobile: {
+    width: 66,
+    height: 66,
+  },
   micPulse: {
     position: "absolute",
     width: 68,
     height: 68,
     borderRadius: 34,
     backgroundColor: lessonColors.yellowButton,
+  },
+  micPulseMobile: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
   },
   micButton: {
     width: 68,
@@ -205,6 +239,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: lessonColors.yellowButton,
+  },
+  micButtonMobile: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
   },
   pressed: {
     opacity: 0.82,

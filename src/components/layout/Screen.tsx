@@ -1,8 +1,18 @@
 import { PropsWithChildren, ReactNode, useEffect, useState } from "react";
-import { Animated, Platform, ScrollView, StyleProp, StyleSheet, View, ViewStyle } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  Animated,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleProp,
+  StyleSheet,
+  View,
+  ViewStyle,
+} from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "../../theme/colors";
 import { spacing } from "../../theme/spacing";
+import { useResponsive } from "../../utils/useResponsive";
 
 type ScreenProps = PropsWithChildren<{
   scroll?: boolean;
@@ -20,8 +30,12 @@ export function Screen({
   fixedFooterHeight = 96,
   maxWidth = 1060,
 }: ScreenProps) {
+  const { isMobile } = useResponsive();
+  const insets = useSafeAreaInsets();
   const [opacity] = useState(() => new Animated.Value(Platform.OS === "web" ? 1 : 0));
   const [translateY] = useState(() => new Animated.Value(Platform.OS === "web" ? 0 : 8));
+  const resolvedBottomPadding =
+    (fixedFooter ? fixedFooterHeight : spacing.xl2) + Math.max(insets.bottom, spacing.md);
 
   useEffect(() => {
     Animated.parallel([
@@ -42,6 +56,7 @@ export function Screen({
     <Animated.View
       style={[
         styles.content,
+        isMobile && styles.contentMobile,
         { maxWidth, opacity, transform: [{ translateY }] },
         contentStyle,
       ]}
@@ -52,20 +67,35 @@ export function Screen({
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {scroll ? (
-        <ScrollView
-          contentContainerStyle={[
-            styles.scrollContent,
-            fixedFooter ? { paddingBottom: fixedFooterHeight } : null,
-          ]}
-        >
-          {content}
-        </ScrollView>
-      ) : (
-        content
-      )}
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoiding}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        {scroll ? (
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+            contentContainerStyle={[
+              styles.scrollContent,
+              { paddingBottom: resolvedBottomPadding },
+            ]}
+          >
+            {content}
+          </ScrollView>
+        ) : (
+          content
+        )}
+      </KeyboardAvoidingView>
       {fixedFooter ? (
-        <View style={styles.fixedFooter} pointerEvents="box-none">
+        <View
+          style={[
+            styles.fixedFooter,
+            {
+              paddingBottom: Math.max(insets.bottom, spacing.sm),
+            },
+          ]}
+          pointerEvents="box-none"
+        >
           <View style={[styles.fixedFooterInner, { maxWidth }]}>{fixedFooter}</View>
         </View>
       ) : null}
@@ -78,6 +108,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  keyboardAvoiding: {
+    flex: 1,
+  },
   scrollContent: {
     flexGrow: 1,
     backgroundColor: colors.background,
@@ -88,6 +121,12 @@ const styles = StyleSheet.create({
     padding: spacing.xl2,
     gap: spacing.lg,
   },
+  contentMobile: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xl,
+    gap: spacing.md,
+  },
   fixedFooter: {
     position: "absolute",
     left: 0,
@@ -95,7 +134,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
-    paddingBottom: spacing.sm,
     backgroundColor: "rgba(6,17,31,0.92)",
   },
   fixedFooterInner: {

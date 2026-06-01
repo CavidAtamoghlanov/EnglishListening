@@ -16,6 +16,10 @@ import { sentenceDataService } from "./sentenceDataService";
 export type SentencePracticeFeedback = {
   type: "correct" | "wrong" | null;
   message: string | null;
+  scorePercent?: number;
+  expectedAnswer?: string;
+  missingWords?: string[];
+  closeEnough?: boolean;
 };
 
 export type PreparedSentenceSession = {
@@ -95,6 +99,8 @@ export function applySentenceAnswer({
   currentIndex,
   mode,
   level,
+  answerCorrectOverride,
+  feedbackOverride,
 }: {
   progress: UserSentenceProgress;
   currentSentence: SentenceItem;
@@ -102,8 +108,10 @@ export function applySentenceAnswer({
   currentIndex: number;
   mode: SentencePracticeMode;
   level: SentenceLevel;
+  answerCorrectOverride?: boolean;
+  feedbackOverride?: SentencePracticeFeedback;
 }): SentenceAnswerResult {
-  const correct = isSentenceAnswerCorrect(currentSentence, answer);
+  const correct = answerCorrectOverride ?? isSentenceAnswerCorrect(currentSentence, answer);
   const levelProgress =
     progress.levels[mode][level] ?? createEmptySentenceLevelProgress(mode, level);
   const now = new Date().toISOString();
@@ -140,7 +148,7 @@ export function applySentenceAnswer({
       },
       correct,
       nextIndex,
-      feedback: { type: "correct", message: "Great!" },
+      feedback: feedbackOverride ?? { type: "correct", message: "Great!" },
     };
   }
 
@@ -163,7 +171,7 @@ export function applySentenceAnswer({
     },
     correct,
     nextIndex,
-    feedback: { type: "wrong", message: "Try again. Say the full sentence clearly." },
+    feedback: feedbackOverride ?? { type: "wrong", message: "Try again. Say the full sentence clearly." },
   };
 }
 
